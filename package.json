@@ -1,0 +1,53 @@
+{
+  "name": "foundryvtt-module-template",
+  "version": "14.0.0",
+  "description": "A reusable JavaScript and Vite module template for Foundry Virtual Tabletop.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "author": "p4535992",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/p4535992/foundryvtt-module-template.git"
+  },
+  "homepage": "https://github.com/p4535992/foundryvtt-module-template#readme",
+  "bugs": {
+    "url": "https://github.com/p4535992/foundryvtt-module-template/issues"
+  },
+  "engines": {
+    "node": ">=24.14.1 <25"
+  },
+  "packageManager": "npm@11.9.0",
+  "scripts": {
+    "dev": "node build/build.js --mode development",
+    "watch": "node build/build.js --mode development --watch",
+    "hot": "vite --host 127.0.0.1",
+    "build": "node build/build.js --mode production",
+    "stage": "node build/build.js --mode stage",
+    "clean": "node utils/clean.js",
+    "lint": "eslint . && npm run lint:json",
+    "lint:json": "node utils/check-source.js",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --test",
+    "check": "npm run lint && npm run format:check && npm test && npm run build && npm run verify:package",
+    "verify:package": "node build/verify-package.js",
+    "release:prepare": "node build/release.js",
+    "link": "node utils/link.js",
+    "foundry": "node utils/foundry.js",
+    "pack": "node utils/packs.js pack",
+    "unpack": "node utils/packs.js unpack",
+    "rename-module": "node utils/rename.js",
+    "upstream:check": "node utils/upstream.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@foundryvtt/foundryvtt-cli": "3.0.5",
+    "eslint": "10.15.0",
+    "globals": "17.14.0",
+    "prettier": "3.8.3",
+    "sass": "1.99.0",
+    "vite": "8.0.10"
+  }
+}

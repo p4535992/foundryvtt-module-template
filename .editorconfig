@@ -1,0 +1,17 @@
+root = true
+
+# Match the default formatting used by Prettier.
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{js,mjs,cjs,json,yml,yaml}]
+indent_size = 2
+
+# Two trailing spaces can express a Markdown line break.
+[*.md]
+trim_trailing_whitespace = false

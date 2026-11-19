@@ -1,0 +1,247 @@
+{
+  "schemaVersion": 1,
+  "repository": "DFreds/dfreds-module-template-ts",
+  "ref": "main",
+  "reviewedOn": "2026-11-19",
+  "mode": "manual source-file comparison",
+  "files": [
+    {
+      "path": "LICENSE",
+      "gitBlobSha": "c7fdb0537c9a008b6ea443a6511a389f4d00c5be",
+      "localPaths": [
+        "LICENSE"
+      ],
+      "decision": "Preserve the complete upstream MIT notice."
+    },
+    {
+      "path": "README.md",
+      "gitBlobSha": "1d238d991e070ba6ecd829f0561f4ba3a7934b0e",
+      "localPaths": [
+        "README.md",
+        "wiki/development.md"
+      ],
+      "decision": "Maintain original English documentation for this JavaScript adaptation."
+    },
+    {
+      "path": "package.json",
+      "gitBlobSha": "235bf38dc3ffa25ec2118efc8bf8cabc65f9e8bc",
+      "localPaths": [
+        "package.json",
+        "package-lock.json"
+      ],
+      "decision": "Review tooling versions and Foundry types; keep JavaScript tooling and the local lockfile."
+    },
+    {
+      "path": "vite.config.ts",
+      "gitBlobSha": "6fbb83f318758bb6014bf4167df05f3684fa6b42",
+      "localPaths": [
+        "vite.config.js",
+        "build/build.js"
+      ],
+      "decision": "Adapt the ES module build while omitting TypeScript-only path aliases and retaining the unified src layout and per-id output."
+    },
+    {
+      "path": "static/lib/shim.ts",
+      "gitBlobSha": "4c7e5100d2196db0def47c785d1a43a973550e3f",
+      "localPaths": [
+        "src/scripts/lib/libwrapper-shim.js",
+        "THIRD_PARTY_NOTICES.md"
+      ],
+      "decision": "Retain Rui Pinheiro's MIT attribution and review the deliberately limited JavaScript fallback."
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "gitBlobSha": "36ae8d34efc04cb133d82a11ecc63a4878438bc6",
+      "localPaths": [
+        ".github/workflows/release.yml",
+        "build/release.js"
+      ],
+      "decision": "Use published-release or manual triggers, an id-wrapped module.zip, and maintained installation notes."
+    },
+    {
+      "path": ".github/workflows/publish.yml",
+      "gitBlobSha": "e9602e57ef504c59d0b3f54f52d2958bab4b93d9",
+      "localPaths": [],
+      "decision": "Intentionally omitted: no Discord announcements or Foundry website publication."
+    },
+    {
+      "path": "src/ts/module.ts",
+      "gitBlobSha": "5fdf4a9f385c26ea9c4c4e8e83b91482080b9387",
+      "localPaths": [
+        "src/module.js"
+      ],
+      "decision": "Keep a small entry point that imports styles and installs the lifecycle listeners."
+    },
+    {
+      "path": "src/ts/hooks/index.ts",
+      "gitBlobSha": "4be36bff796776a237a9ebdc27cc3fcd1edd2e1e",
+      "localPaths": [
+        "src/scripts/hooks/index.js"
+      ],
+      "decision": "Register JavaScript lifecycle modules centrally, including the local ready phase."
+    },
+    {
+      "path": "src/ts/hooks/init.ts",
+      "gitBlobSha": "b01c3b683b07373b7d528c35467bfaf021e96a39",
+      "localPaths": [
+        "src/scripts/hooks/init.js"
+      ],
+      "decision": "Register settings, Handlebars helpers, and the public module API during init."
+    },
+    {
+      "path": "src/ts/hooks/setup.ts",
+      "gitBlobSha": "f1913bb62de66b682d81025f4dcac867fe706928",
+      "localPaths": [
+        "src/scripts/hooks/setup.js",
+        "src/scripts/wrappers.js"
+      ],
+      "decision": "Keep setup integration explicit; the demonstration does not wrap unrelated core functionality by default."
+    },
+    {
+      "path": "src/ts/hooks/hot-reload.ts",
+      "gitBlobSha": "fa09d80dc7fa54578611d9da02631337a0c12793",
+      "localPaths": [
+        "wiki/development.md",
+        "src/module.js"
+      ],
+      "decision": "Track upstream HMR changes for review; the local implementation promises rebuilding and documented reloads, not full parity."
+    },
+    {
+      "path": "src/ts/settings.ts",
+      "gitBlobSha": "1bc1f69620550f169ed3e5b0df3a940bb86b3549",
+      "localPaths": [
+        "src/scripts/settings.js"
+      ],
+      "decision": "Keep named settings registration and access in one JavaScript module."
+    },
+    {
+      "path": "src/ts/logger.ts",
+      "gitBlobSha": "bf64e269df98ddf1b857efe0d65e6ba363af2c26",
+      "localPaths": [
+        "src/scripts/logger.js"
+      ],
+      "decision": "Keep module-prefixed logging with local diagnostics behavior."
+    },
+    {
+      "path": "src/ts/handlebar-helpers.ts",
+      "gitBlobSha": "e68d9f1bcf5aa1241483dce5b1d6c755ad23c965",
+      "localPaths": [
+        "src/scripts/handlebars.js"
+      ],
+      "decision": "Register namespaced template helpers to avoid collisions."
+    },
+    {
+      "path": "src/ts/constants.ts",
+      "gitBlobSha": "f259ae387a2af418a43a91d499e1f11a02280b47",
+      "localPaths": [
+        "src/scripts/constants.js"
+      ],
+      "decision": "Derive the module id from src/module.json instead of a TypeScript static alias."
+    },
+    {
+      "path": "src/ts/api.ts",
+      "gitBlobSha": "d3ca635fa6e5fb42e7e2aab05531bae4f73bb2b9",
+      "localPaths": [
+        "src/scripts/api.js"
+      ],
+      "decision": "The upstream file contains only TypeScript interfaces; the local file is an independent runtime API, not a port of type aliases."
+    },
+    {
+      "path": "static/module.json",
+      "gitBlobSha": "b81cbd3004fa0820818b69f0f82b2f08e2a77e1f",
+      "localPaths": [
+        "src/module.json"
+      ],
+      "decision": "Keep one source manifest and lang paths; generate release URLs and leave verified unset until real runtime tests."
+    },
+    {
+      "path": "build/clean.ts",
+      "gitBlobSha": "7a69b83eb2dd063b486250ffa0e080bd6933c3f8",
+      "localPaths": [
+        "utils/clean.js"
+      ],
+      "decision": "Preserve live packs while cleaning only a marked per-id output directory."
+    },
+    {
+      "path": "build/link-foundry.ts",
+      "gitBlobSha": "ebead33aba92ee5c4e85c124e483da9a9ac17f1a",
+      "localPaths": [
+        "utils/link.js"
+      ],
+      "decision": "Link the per-id output to Foundry; refuse replacing an existing real directory."
+    },
+    {
+      "path": "build/rename-module.ts",
+      "gitBlobSha": "edd4c42b5def94719d6cc8b3c3d84b4ca10c6cdd",
+      "localPaths": [
+        "utils/rename.js"
+      ],
+      "decision": "Rename explicit project fields and namespaces without rewriting upstream provenance or unrelated files."
+    },
+    {
+      "path": "build/pack.ts",
+      "gitBlobSha": "a1f0d4ff20aff89879bd239fb24e1c7463f8c28e",
+      "localPaths": [
+        "utils/packs.js"
+      ],
+      "decision": "Compile declared packs from packs-src and require explicit overwrite of existing output."
+    },
+    {
+      "path": "build/unpack.ts",
+      "gitBlobSha": "8d437b64519cd42a2682fb829cb44ff8a131a357",
+      "localPaths": [
+        "utils/packs.js"
+      ],
+      "decision": "Extract compiled packs into tracked source directories with explicit overwrite handling."
+    },
+    {
+      "path": "build/util/packs.ts",
+      "gitBlobSha": "a92ae63dbd17013f3af9404e93309292426a1231",
+      "localPaths": [
+        "utils/packs.js"
+      ],
+      "decision": "Resolve declared pack names and paths for the local source/output layout."
+    },
+    {
+      "path": "build/start-foundry.ts",
+      "gitBlobSha": "3dcc8db339f558175c6826f24ddeb107b98c8dbc",
+      "localPaths": [
+        "utils/foundry.js"
+      ],
+      "decision": "Start an explicitly configured local Foundry installation using the chosen version."
+    },
+    {
+      "path": "foundryconfig.example.json",
+      "gitBlobSha": "28e16e046043867477745104fc78118b67693500",
+      "localPaths": [
+        "foundryconfig.example.json",
+        "build/config.js"
+      ],
+      "decision": "Document local Foundry Data and versioned installation paths without committing personal configuration."
+    }
+  ],
+  "actionPins": [
+    {
+      "repository": "actions/checkout",
+      "tag": "v7",
+      "sha": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "verifiedOn": "2026-11-19"
+    },
+    {
+      "repository": "actions/setup-node",
+      "tag": "v7",
+      "sha": "949feb2413d6458794dcd2491c4babbbce0c15c1",
+      "verifiedOn": "2026-11-19"
+    }
+  ],
+  "intentionalDifferences": [
+    "JavaScript source, JavaScript build helpers, and JSDoc rather than TypeScript compilation.",
+    "src/module.json, src/module.js, src/lang, src/styles, src/templates, src/assets, and src/scripts.",
+    "A built module lives inside dist/<module-id>; the release ZIP preserves that directory.",
+    "Release assets are named module.json and module.zip.",
+    "Download URLs are pinned to the exact tag; manifest URLs remain the latest stable update feed.",
+    "Independent Node-based ZIP packaging and verification.",
+    "No Git-history-derived release notes, pull-request workflows, scheduled checks, upstream bots, automatic merges, or external publication; release changes come from curated CHANGELOG entries.",
+    "Development uses rebuilding and documented reloads; it does not promise parity with every upstream HMR behavior."
+  ]
+}

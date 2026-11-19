@@ -1,0 +1,117 @@
+name: Package Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing published release tag to package, for example v14.0.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+    steps:
+      - name: Validate the requested tag
+        id: release-ref
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const tag = process.env.RELEASE_TAG ?? "";
+          const pattern = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
+          if (!pattern.test(tag)) throw new Error("The release tag must be a semantic version, optionally prefixed with v.");
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, "ref=refs/tags/" + tag + "\n");
+          NODE
+
+      - name: Check out the exact release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ steps.release-ref.outputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Verify the checkout and release identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from "node:child_process";
+          import { parseReleaseTag } from "./build/verify-package.js";
+          parseReleaseTag(process.env.RELEASE_TAG);
+          const head = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+          const tag = execFileSync("git", ["rev-parse", "refs/tags/" + process.env.RELEASE_TAG + "^{commit}"], { encoding: "utf8" }).trim();
+          if (head !== tag) throw new Error("The checkout does not match the requested tag.");
+          NODE
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$RUNNER_TEMP/module-release.json"
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import path from "node:path";
+          const release = JSON.parse(fs.readFileSync(path.join(process.env.RUNNER_TEMP, "module-release.json"), "utf8"));
+          if (release.tag_name !== process.env.RELEASE_TAG || release.draft) throw new Error("An existing published release with the exact tag is required.");
+          NODE
+
+      - name: Install the locked dependencies
+        run: npm ci
+
+      - name: Check source, tests, build, and distribution
+        run: npm run check
+
+      - name: Prepare the isolated release package
+        run: npm run release:prepare -- --tag "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"
+
+      - name: Verify release artifacts
+        run: npm run verify:package -- --artifacts artifacts --tag "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"
+
+      - name: Prepare curated changes and installation instructions
+        id: release-body
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$RUNNER_TEMP/module-release.json"
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import path from "node:path";
+          import { updateReleaseBody } from "./build/release.js";
+          const temporary = process.env.RUNNER_TEMP;
+          const release = JSON.parse(fs.readFileSync(path.join(temporary, "module-release.json"), "utf8"));
+          if (release.tag_name !== process.env.RELEASE_TAG || release.draft || !Number.isSafeInteger(release.id)) {
+              throw new Error("Release identity changed or the release is no longer published.");
+          }
+          const section = fs.readFileSync("artifacts/install-section.md", "utf8").trimEnd();
+          const changes = fs.readFileSync("artifacts/changelog-section.md", "utf8").trimEnd();
+          const body = updateReleaseBody(release.body, section, changes);
+          fs.writeFileSync(path.join(temporary, "module-release-patch.json"), JSON.stringify({ body }));
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, "id=" + release.id + "\n");
+          NODE
+
+      - name: Attach the generated manifest and ZIP to the same release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$RELEASE_TAG" artifacts/module.json artifacts/module.zip --repo "$GITHUB_REPOSITORY" --clobber
+
+      - name: Update the managed changes and installation sections
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ steps.release-body.outputs.id }}
+        run: gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" --input "$RUNNER_TEMP/module-release-patch.json" --silent

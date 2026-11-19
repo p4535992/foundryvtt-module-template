@@ -1,0 +1,30 @@
+{
+  "foundryvtt-module-template": {
+    "Settings": {
+      "Debug": {
+        "Name": "Enable debug logging",
+        "Hint": "Write additional module messages to this browser's console. Foundry's global hook debugging is unchanged."
+      },
+      "Sample": {
+        "Name": "Enable the sample setting",
+        "Hint": "A client setting used by the demo window. Replace it with your module's own settings."
+      }
+    },
+    "Demo": {
+      "Title": "Your module is ready",
+      "Description": "This window connects a Foundry application, a Handlebars template, localized text, styles, and a saved setting.",
+      "SettingLabel": "Sample setting",
+      "Enabled": "Enabled",
+      "Disabled": "Disabled",
+      "Enable": "Enable sample setting",
+      "Disable": "Disable sample setting",
+      "Note": "Saved for this client."
+    },
+    "Warnings": {
+      "LibWrapperFallback": "This module is using its basic libWrapper fallback. Enable the libWrapper module to improve compatibility with other modules."
+    },
+    "Errors": {
+      "Operation": "{operation} failed. See the browser console for details."
+    }
+  }
+}

@@ -1,0 +1,19 @@
+# Normalize source files while preserving binary asset bytes.
+* text=auto eol=lf
+*.svg text eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.avif binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.mp3 binary
+*.ogg binary
+*.mp4 binary
+*.webm binary
+*.pdf binary
+*.zip binary

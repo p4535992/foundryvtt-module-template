@@ -1,0 +1,26 @@
+<div class="module-demo">
+  <header class="module-demo__header">
+    <img class="module-demo__icon" src="{{icon}}" alt="" width="56" height="56">
+    <div>
+      <p class="module-demo__eyebrow">{{foundryvtt-module-template-uppercase moduleTitle}}</p>
+      <h2>{{localize labels.title}}</h2>
+    </div>
+  </header>
+
+  <p class="module-demo__description">{{localize labels.description}}</p>
+
+  <div class="module-demo__setting">
+    <span>{{localize labels.setting}}</span>
+    <strong>{{localize labels.status}}</strong>
+  </div>
+
+  <button type="button" data-action="toggleSample" aria-pressed="{{enabled}}">
+    <i class="fa-solid fa-toggle-on" aria-hidden="true"></i>
+    {{localize labels.toggle}}
+  </button>
+
+  <footer class="module-demo__footer">
+    <span>{{localize labels.note}}</span>
+    <span>v{{version}}</span>
+  </footer>
+</div>

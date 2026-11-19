@@ -1,0 +1,12 @@
+{
+  "dataPath": "/absolute/path/to/FoundryVTT/Data",
+  "foundryUrl": "http://127.0.0.1:30000",
+  "vitePort": 30001,
+  "defaultVersion": "14",
+  "versions": {
+    "14": {
+      "entry": "/absolute/path/to/foundryvtt-14/main.js",
+      "args": []
+    }
+  }
+}

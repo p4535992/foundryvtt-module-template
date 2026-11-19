@@ -1,0 +1,22 @@
+# Dependencies and generated output. Keep package-lock.json tracked.
+node_modules/
+dist/
+artifacts/
+.release-stage/
+.vite-cache/
+.eslintcache
+coverage/
+.test-tmp/
+
+# Local Foundry paths and environment values.
+foundryconfig.json
+.env
+.env.*
+!.env.example
+
+# Local editor, log, and operating-system files.
+.idea/
+.vscode/
+*.log
+.DS_Store
+Thumbs.db

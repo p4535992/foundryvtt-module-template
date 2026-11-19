@@ -1,0 +1,54 @@
+.foundryvtt-module-template {
+  .module-demo {
+    display: grid;
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+
+  .module-demo__header {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+
+    h2 {
+      margin: 0;
+      border: 0;
+    }
+  }
+
+  .module-demo__icon {
+    flex: 0 0 auto;
+    border: 0;
+  }
+
+  .module-demo__eyebrow {
+    margin: 0 0 0.3rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    opacity: 0.7;
+  }
+
+  .module-demo__description {
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .module-demo__setting {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    border: 1px solid var(--color-border-light-primary, #8a789b);
+    border-radius: 0.4rem;
+    padding: 0.8rem;
+  }
+
+  .module-demo__footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+}

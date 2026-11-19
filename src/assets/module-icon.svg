@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Module cube</title>
+  <desc id="desc">An original geometric cube made of violet and gold faces.</desc>
+  <rect width="64" height="64" rx="15" fill="#241b35"/>
+  <path d="M32 11 51 22 32 33 13 22Z" fill="#bda1ef"/>
+  <path d="M13 25 30 35 30 54 13 44Z" fill="#8061ad"/>
+  <path d="M34 35 51 25 51 44 34 54Z" fill="#e4bd71"/>
+  <path d="M25 20 32 16 39 20 32 24Z" fill="#241b35" opacity=".55"/>
+</svg>

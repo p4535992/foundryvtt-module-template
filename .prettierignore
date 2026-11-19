@@ -1,0 +1,17 @@
+# Generated files and local configuration.
+node_modules/
+package-lock.json
+dist/
+artifacts/
+.release-stage/
+.vite-cache/
+coverage/
+.test-tmp/
+foundryconfig.json
+.env
+.env.*
+.vscode/
+.idea/
+
+# Preserve the attributed third-party shim's layout during upstream comparison.
+src/scripts/lib/libwrapper-shim.js
