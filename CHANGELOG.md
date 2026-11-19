@@ -8,6 +8,8 @@ Notable changes to this template are recorded here. Entries are curated by maint
 
 ### Added
 
+- Separate stable-release and prerelease workflows with associated tag creation, verified draft uploads, and publication after validation.
+- Guarded draft recovery and protection against changing existing tags, overwriting published releases, or moving the stable update feed backwards.
 - JavaScript and Vite foundation with a unified src/ directory for the manifest, entry point, translations, styles, templates, assets, and scripts.
 - Central lifecycle registration, settings, logging, Handlebars helpers, a public API, and an ApplicationV2 demonstration.
 - Local Foundry configuration, linking, startup, module renaming, and compendium pack and unpack commands.
@@ -26,3 +28,8 @@ Notable changes to this template are recorded here. Entries are curated by maint
 - Reimplemented the requested Pin Cushion package layout with an independent ZIP builder and release verifier.
 - Migrated the legacy lint configuration into ESLint flat configuration, separating browser and Node environments and keeping runtime source linted.
 - Set the initial module and package version to 14.0.0 and updated supported tooling pins using current official D&D 5e project references.
+
+### Fixed
+
+- Build startup now completes module evaluation before loading the Vite configuration.
+- Manual publication validates and builds the selected commit instead of trying to check out a tag that does not yet exist.

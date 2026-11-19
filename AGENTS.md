@@ -18,6 +18,8 @@
 - Publish assets named `module.json` and `module.zip`.
 - Preserve `<module-id>/` as the ZIP's top-level directory.
 - Point `download` at the exact release tag; preserve the stable manifest update feed.
+- Pin prerelease manifests to their own tags. Never promote prereleases to the stable update feed.
+- Publication must validate the selected commit, create its associated tag without moving an existing tag, verify both uploaded assets, and publish the draft last. Published releases are immutable.
 - The manifest inside the archive and the separately attached manifest must be byte-identical.
 - Generate the English installation section from `.github/RELEASE_TEMPLATE.md`.
 - Maintain human-written, English changelog entries in `CHANGELOG.md`. Keep unreleased work under `Unreleased`; release preparation must use the dated entry matching the requested version.

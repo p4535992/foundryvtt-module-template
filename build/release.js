@@ -84,6 +84,9 @@ export function renderInstallationSection({ tag, repository, moduleId }) {
     DOWNLOAD_URL: urls.download,
     LATEST_RELEASE_URL: urls.latestRelease,
     UPDATE_MANIFEST_URL: urls.manifest,
+    UPDATE_POLICY: urls.prerelease
+      ? "This installation is pinned to this exact prerelease. It does not automatically follow later prereleases or the stable feed. To switch versions, install the manifest attached to the release you choose. Its pinned manifest is:"
+      : "This installation follows the latest stable update feed. Future stable updates are discovered through this manifest:",
   };
   let text = fs.readFileSync(path.join(PROJECT_ROOT, ".github", "RELEASE_TEMPLATE.md"), "utf8");
   for (const [key, value] of Object.entries(tokens)) text = text.replaceAll("{{" + key + "}}", value);

@@ -1,6 +1,6 @@
 # Releasing a module
 
-The release workflow creates two installable assets: **module.json** and **module.zip**. The ZIP contains one top-level directory named after the module id.
+The manual release workflows create the version tag and publish two installable assets: **module.json** and **module.zip**. The ZIP contains one top-level directory named after the module id. Stable releases and prereleases have separate workflows and share the same verified packaging process.
 
 ## Prepare and verify locally
 
@@ -28,7 +28,7 @@ npm run release:prepare -- --tag v14.0.0 --repository p4535992/foundryvtt-module
 npm run verify:package -- --artifacts artifacts --tag v14.0.0 --repository p4535992/foundryvtt-module-template
 ```
 
-Replace the example repository and tag after creating your own module. Tags must be semantic versions, optionally prefixed with `v`. The tag is the release version source; its optional prefix is removed from `module.json.version` and retained in the asset download URL.
+Replace the example repository and tag after creating your own module. The local packaging command accepts semantic-version tags, optionally prefixed with `v`. The manual publication workflows normalize both `14.0.0` and `v14.0.0` to the canonical tag `v14.0.0` before packaging. The generated `module.json.version` contains `14.0.0`, while its download URL contains the exact canonical tag.
 
 The release command creates a fresh temporary directory beneath .release-stage/, builds there, and packages that result. It does not package an existing development dist/ directory. If the manifest declares compendiums, it compiles them from packs-src/ into that same isolated output; a declared pack without source data fails the release.
 
@@ -57,25 +57,39 @@ For the example tag v14.0.0:
 | `manifest` update feed | https://github.com/p4535992/foundryvtt-module-template/releases/latest/download/module.json  |
 | Latest stable release  | https://github.com/p4535992/foundryvtt-module-template/releases/latest                       |
 
-The attached manifest installs the ZIP belonging to its exact release. Its update feed lets Foundry discover the latest stable version later. Prerelease artifacts remain addressable by their own release tag.
+The attached stable manifest installs the ZIP belonging to its exact release. Its update feed lets Foundry discover the latest stable version later.
 
-## GitHub workflow
+A prerelease such as v14.0.1-rc.1 uses its own attached manifest URL as the `manifest` field: https://github.com/p4535992/foundryvtt-module-template/releases/download/v14.0.1-rc.1/module.json. Both its manifest and ZIP remain pinned to that prerelease. Install the attached manifest of another prerelease explicitly to test it; there is no automatically moving prerelease feed. Publishing a prerelease leaves the latest stable release unchanged.
 
-The **Package Release** workflow runs when a release is published. It also supports a manual run with an existing published release tag. Both paths check out `refs/tags/<tag>` and check that the checkout and release identify the same tag.
+## Create a stable release
 
-The workflow installs locked dependencies, runs the project checks, builds in isolated staging, verifies the archive, and attaches module.json and module.zip to that release. A manual rerun replaces those two generated assets. Keep released tags fixed; publish a new version for changed code.
+1. Commit the intended module changes and the exact dated CHANGELOG.md entry to the branch you want to release. Keep package.json and src/module.json versions aligned.
+2. Open **Actions → Create Release → Run workflow** and select that branch.
+3. Enter a stable semantic version such as `14.0.0` or `v14.0.0` in the `version` input, then run the workflow.
 
-Create the tag and release through your normal, explicit release process. The workflow does not create commits or tags. A published release will briefly exist before its build assets are attached; wait for the packaging job to succeed before sharing its installation manifest.
+The workflow rejects versions containing a prerelease suffix. It records the selected branch's commit at dispatch, checks out that exact SHA, installs locked dependencies, runs the project checks, builds in isolated staging, and verifies the archive. An existing tag or release is not required. After validation succeeds, publication creates `v14.0.0` at that verified commit, prepares a draft release, uploads module.json and module.zip, and publishes the completed release last.
 
-The workflow uses the repository GITHUB_TOKEN with contents write permission for its release job. GH_TOKEN is exposed only to the steps that read or update release data, not to dependency installation or build commands. It does not need a personal access token or a Discord or Foundry publication secret.
+## Create a prerelease
 
-The **Check** workflow runs on branch pushes and manual requests. No workflow is triggered by a pull request, a schedule, or an upstream update bot.
+Use **Actions → Create Prerelease → Run workflow** for testing versions. Choose the intended branch and enter a version with a prerelease suffix, such as `14.0.1-rc.1` or `v14.0.1-rc.1`. Its changelog needs an exact dated `[14.0.1-rc.1]` entry. A stable version is rejected by this workflow.
+
+The prerelease workflow follows the same checks and publication order, creates the canonical tag `v14.0.1-rc.1`, and marks the GitHub release as a prerelease. It does not promote the release to latest stable. Share that prerelease's attached module.json URL with testers.
+
+## Publication guarantees and reruns
+
+Both manual workflows call .github/workflows/publish.yml. The build job has read-only repository permissions. It passes the four verified files to a separate publication job through an artifact identified by its exact artifact ID; the download fails on an artifact digest mismatch. Only the publication job has contents write permission, and GH_TOKEN is exposed only to the publication helper. That job does not install dependencies or run npm scripts. No personal access token, Discord secret, or Foundry publication secret is required.
+
+The helper checks the requested version, channel, commit, and package again before publication. Publication jobs are serialized across the repository, while independent builds can run in parallel. An existing tag is accepted only if it already points to that exact commit; tags are never moved. An existing published release is refused, so rerunning a successful release cannot replace its assets. Publish a new version when code changes. Stable publication also refuses to replace a newer latest stable release with an older version.
+
+An interrupted draft may be resumed only for the same tag, source commit, and release channel. Rerun the original workflow to keep its selected commit. If its temporary build artifact has expired, rerun all jobs to rebuild it. A failure before publication leaves any created release as a draft; it is not exposed as a completed release without its assets. A branch advancing after dispatch does not change the commit being released.
+
+Release publication is manual. Publishing the draft does not start another release workflow. The separate **Check** workflow runs on branch pushes and manual requests. No workflow is triggered by a pull request, a schedule, or an upstream update bot.
 
 ## Release description
 
 .github/RELEASE_TEMPLATE.md is the English source for the generated installation instructions. It links to the attached version-specific manifest, the matching ZIP, the latest stable release, and the update feed. It also explains manual extraction into Data/modules/.
 
-The workflow reads the exact version entry from CHANGELOG.md and appends or updates its curated changes section. It also appends or updates the installation section. These sections use separate markers:
+The workflow reads the exact version entry from CHANGELOG.md and appends or updates its curated changes section while preparing the draft. It also appends or updates the installation section. These sections use separate markers:
 
 ```text
 <!-- foundry-module-template:installation:start -->

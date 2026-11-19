@@ -46,12 +46,12 @@ Changing a baseline hash records a review decision. Do not update it automatical
 | Separate static and TypeScript trees    | A unified src/ tree with module.json, module.js, lang/, styles/, templates/, assets/, and scripts/                                    |
 | Vite ES module build                    | ES module output and Foundry globals, with module files under dist/&lt;module-id&gt;/; TypeScript-only path aliases are omitted       |
 | Upstream ZIP name and root layout       | module.zip containing one directory named after the module id                                                                         |
-| Tag-triggered draft release             | Packaging an explicitly published release or manually selected published release tag                                                  |
+| Tag-triggered draft release             | Separate manual stable/prerelease workflows that validate a selected commit, create its tag, and publish verified assets              |
 | GitHub-generated release notes          | Curated version entries from CHANGELOG.md and maintained English installation instructions, preserving unrelated author-written notes |
 | Discord and Foundry website publication | Omitted                                                                                                                               |
 | Development hot updates                 | Local rebuild and reload behavior documented for this implementation; no claim of identical behavior to every upstream HMR feature    |
 
-Upstream publish.yml remains in the comparison allowlist so that its role is visible, but it has no local publication counterpart.
+Upstream publish.yml remains in the comparison allowlist to track its Discord and Foundry website publication role. The local publish.yml is a separate reusable workflow for GitHub release assets; it does not publish to those external destinations.
 
 The upstream compatibility shim is adapted into src/scripts/lib/libwrapper-shim.js. Its Rui Pinheiro MIT notice is retained in THIRD_PARTY_NOTICES.md. The root LICENSE preserves the DFreds MIT notice.
 
@@ -59,6 +59,6 @@ The Pin Cushion repository informed the requested release layout. Its runtime co
 
 ## Action pins
 
-The GitHub workflows pin actions/checkout and actions/setup-node to reviewed commit SHAs. Their v7 tag references and action metadata were checked on the initial review date, and the hashes are recorded in upstream.json.
+The GitHub workflows pin checkout, Node setup, artifact upload, and artifact download actions to reviewed commit SHAs. Their exact tag references and action metadata were checked on the recorded review date, and the hashes are recorded in upstream.json.
 
 Review action updates explicitly. The upstream comparison command deliberately stays within the DFreds source-file allowlist; it does not silently update action pins or check other services.

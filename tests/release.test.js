@@ -83,6 +83,23 @@ test("release tags and repositories reject ambiguous or unsafe values", () => {
   );
 });
 
+test("prerelease update manifests are pinned while stable versions retain the stable feed", () => {
+  const stableManifest = "https://github.com/" + REPOSITORY + "/releases/latest/download/module.json";
+  const stable = releaseUrls(REPOSITORY, "v1.2.3+build-7");
+  assert.equal(stable.prerelease, false);
+  assert.equal(stable.manifest, stableManifest);
+  assert.equal(stable.stableManifest, stableManifest);
+
+  const prerelease = releaseUrls(REPOSITORY, "v1.2.3-rc.1+build-7");
+  const exactBase = "https://github.com/" + REPOSITORY + "/releases/download/v1.2.3-rc.1%2Bbuild-7";
+  assert.equal(prerelease.prerelease, true);
+  assert.equal(prerelease.manifest, exactBase + "/module.json");
+  assert.equal(prerelease.attachedManifest, prerelease.manifest);
+  assert.equal(prerelease.download, exactBase + "/module.zip");
+  assert.equal(prerelease.stableManifest, stableManifest);
+  assert.notEqual(prerelease.manifest, prerelease.stableManifest);
+});
+
 test("packaging emits an id directory, exact-release URLs, identical manifests, and deterministic bytes", (t) => {
   const input = fixture(t);
   const original = fs.readFileSync(path.join(input.moduleDirectory, "module.json"));
@@ -110,6 +127,31 @@ test("packaging emits an id directory, exact-release URLs, identical manifests, 
   );
   packageExistingDirectory(input);
   assert.ok(fs.readFileSync(result.zipPath).equals(firstZip));
+});
+
+test("prerelease packaging verifies pinned manifests and rejects a stable-feed substitution", (t) => {
+  const input = fixture(t);
+  input.tag = "v1.2.3-rc.1";
+  fs.writeFileSync(
+    path.join(input.moduleDirectory, "CHANGELOG.md"),
+    "# Changelog\n\n## [1.2.3-rc.1] - 2026-11-19\n\n### Added\n\n- Add the release candidate.\n",
+  );
+  const result = packageExistingDirectory(input);
+  const urls = releaseUrls(input.repository, input.tag);
+  assert.equal(result.manifest.version, "1.2.3-rc.1");
+  assert.equal(result.manifest.manifest, urls.attachedManifest);
+  assert.equal(result.manifest.download, urls.download);
+  assert.equal(verifyPackage({ ...result, tag: input.tag, repository: input.repository }).fileCount, 11);
+
+  const archive = decodeZip(fs.readFileSync(result.zipPath));
+  const bytes = Buffer.from(JSON.stringify({ ...result.manifest, manifest: urls.stableManifest }));
+  archive.set("example-module/module.json", bytes);
+  fs.writeFileSync(result.manifestPath, bytes);
+  fs.writeFileSync(result.zipPath, encodeZip(archive));
+  assert.throws(
+    () => verifyPackage({ ...result, tag: input.tag, repository: input.repository }),
+    /prerelease manifest.*exact release tag/u,
+  );
 });
 
 test("missing manifest assets fail and remove stale release artifacts", (t) => {
@@ -247,6 +289,7 @@ test("installation notes include specific assets and preserve author-written tex
   assert.match(section, /releases\/download\/v1\.2\.3\/module\.json/u);
   assert.match(section, /releases\/download\/v1\.2\.3\/module\.zip/u);
   assert.match(section, /latest stable release/u);
+  assert.match(section, /follows the latest stable update feed/u);
   assert.match(section, /Data\/modules\/example-module\/module\.json/u);
   const original = "# Changes\n\nAuthor-written release notes.\n";
   const first = updateReleaseBody(original, section);
@@ -259,6 +302,19 @@ test("installation notes include specific assets and preserve author-written tex
   assert.equal(updated.split(INSTALL_SECTION_START).length - 1, 1);
   assert.throws(() => updateReleaseBody(INSTALL_SECTION_START + "\nUnclosed section", section), /ambiguous/u);
   assert.throws(() => updateReleaseBody(INSTALL_SECTION_END + INSTALL_SECTION_START, section), /ambiguous/u);
+});
+
+test("prerelease installation notes explain the pinned policy and exact manifest", () => {
+  const section = renderInstallationSection({
+    tag: "v1.2.3-rc.1",
+    repository: REPOSITORY,
+    moduleId: "example-module",
+  });
+  assert.match(section, /pinned to this exact prerelease/u);
+  assert.match(section, /does not automatically follow later prereleases or the stable feed/u);
+  assert.match(section, /releases\/download\/v1\.2\.3-rc\.1\/module\.json/u);
+  assert.doesNotMatch(section, /releases\/latest\/download\/module\.json/u);
+  assert.doesNotMatch(section, /\{\{[A-Z_]+\}\}/u);
 });
 
 test("manual upstream comparison requests only the explicit source-file allowlist", async () => {

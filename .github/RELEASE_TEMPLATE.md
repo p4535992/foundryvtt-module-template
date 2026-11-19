@@ -10,9 +10,9 @@ In Foundry VTT, open **Add-on Modules → Install Module** and paste the URL of 
 
 That manifest downloads the [module.zip attached to this exact release]({{DOWNLOAD_URL}}). Use these attached release assets when installing; the repository source archive is not the built module.
 
-To install the latest stable version, open the [latest stable release]({{LATEST_RELEASE_URL}}) and copy the URL of the module.json asset attached there. That manifest points to the ZIP belonging to that release.
+When a stable release is available, open the [latest stable release]({{LATEST_RELEASE_URL}}) and copy the URL of the module.json asset attached there to install it. That manifest points to the ZIP belonging to that release.
 
-The installed module uses this update feed:
+{{UPDATE_POLICY}}
 
 {{UPDATE_MANIFEST_URL}}
 

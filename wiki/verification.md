@@ -8,11 +8,11 @@ The release checks include:
 
 - ESLint for JavaScript and a source-contract check for JSON, module identity, version consistency, and localization layout.
 - Prettier formatting checks using the repository's configuration.
-- 42 behavioral tests with the built-in Node test runner.
+- Behavioral tests with the built-in Node test runner, including tag creation, stable and prerelease policies, interrupted uploads, draft recovery, and publication guards.
 - A production Vite build and distribution validation.
 - An isolated release build, exact-tag manifest validation, ZIP layout and checksum checks, and byte-for-byte comparison of both manifest copies.
 
-Run npm run check before preparing a release. The GitHub Check workflow uses the same command. The Package Release workflow repeats these checks before attaching module.json and module.zip to the requested release.
+Run npm run check before preparing a release. The GitHub Check workflow uses the same command. The Create Release and Create Prerelease workflows repeat these checks, create the associated tag, and publish only after module.json and module.zip have been uploaded and verified.
 
 ## Foundry runtime validation
 

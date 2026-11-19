@@ -2,6 +2,7 @@
 
 [![Checks](https://github.com/p4535992/foundryvtt-module-template/actions/workflows/check.yml/badge.svg?branch=main)](https://github.com/p4535992/foundryvtt-module-template/actions/workflows/check.yml)
 [![Release](https://github.com/p4535992/foundryvtt-module-template/actions/workflows/release.yml/badge.svg)](https://github.com/p4535992/foundryvtt-module-template/actions/workflows/release.yml)
+[![Prerelease](https://github.com/p4535992/foundryvtt-module-template/actions/workflows/prerelease.yml/badge.svg)](https://github.com/p4535992/foundryvtt-module-template/actions/workflows/prerelease.yml)
 [![JavaScript](https://img.shields.io/badge/source-JavaScript-f7df1e)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 [![Foundry VTT](https://img.shields.io/badge/Foundry_VTT-v14_target-orange)](https://foundryvtt.com/api/v14/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -26,6 +27,7 @@ The project adapts useful features from [DFreds Module Template TS](https://gith
 - Release assets named `module.json` and `module.zip`, with version-specific download URLs.
 - An archive containing the correctly named module directory.
 - English release installation instructions with links generated for the exact release.
+- Separate stable and prerelease workflows that create the associated tag after validation and publish only after both assets are ready.
 - A human-written changelog, with the matching version entry included in release notes.
 - Prettier conventions carried over from Pin Cushion, with formatting checks for source and documentation.
 - Manual, file-based upstream comparison, with a recorded baseline and no automatic code replacement.
@@ -237,7 +239,17 @@ For a release tagged `v1.2.3`, the generated manifest uses:
 }
 ```
 
-`download` identifies the archive for that exact release. `manifest` is the stable update feed. The complete tag, including an optional `v`, stays in asset URLs; the module version omits that prefix.
+`download` identifies the archive for that exact release. Stable releases use the latest stable manifest as their update feed. Prereleases point to the manifest attached to their own tag; choosing another prerelease or the stable channel is an explicit installation decision.
+
+The publication workflows accept versions with or without a leading `v` and always create canonical tags such as `v14.0.0` or `v14.0.1-rc.1`. The module version omits that prefix.
+
+### Create a release or prerelease
+
+In GitHub Actions, choose **Create Release** for a stable version such as `14.0.0`, or **Create Prerelease** for a version with a suffix such as `14.0.1-rc.1`. Select the source branch or tag, enter the version, and run the workflow. Prepare the matching dated changelog entry in that source revision first.
+
+The workflow checks and packages the exact selected commit before creating its tag. It then creates a draft release, uploads and verifies both assets, and publishes the completed release. No tag or release needs to exist before the first run. Existing tags must already point to the same commit; published releases cannot be replaced. A failed upload leaves a draft that can be resumed from the same source revision.
+
+Stable publication must advance the latest stable version. Prereleases are explicitly marked on GitHub and do not replace the stable update feed.
 
 ### Install a published release
 
@@ -247,7 +259,7 @@ To install the latest version, open the latest published release and use the `mo
 
 For manual installation, download `module.zip` and extract it into `Data/modules/`. The archive already contains the correctly named module folder.
 
-See [releasing](wiki/releasing.md) for the GitHub workflow, exact-tag checkout, validation gates, release notes, and prereleases.
+See [releasing](wiki/releasing.md) for the workflows, immutable source selection, tag creation, validation gates, release notes, and draft recovery.
 
 ## Stay aligned with DFreds
 

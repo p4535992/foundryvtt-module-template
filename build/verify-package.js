@@ -101,14 +101,19 @@ export function validateRepository(repository) {
 
 export function releaseUrls(repository, tag) {
   validateRepository(repository);
-  parseReleaseTag(tag);
+  const { version } = parseReleaseTag(tag);
+  const prerelease = version.split("+", 1)[0].includes("-");
   const base = "https://github.com/" + repository;
   const releaseBase = base + "/releases/download/" + encodeURIComponent(tag);
+  const stableManifest = base + "/releases/latest/download/module.json";
+  const attachedManifest = releaseBase + "/module.json";
   return {
     repositoryUrl: base,
-    manifest: base + "/releases/latest/download/module.json",
+    prerelease,
+    manifest: prerelease ? attachedManifest : stableManifest,
+    stableManifest,
     download: releaseBase + "/module.zip",
-    attachedManifest: releaseBase + "/module.json",
+    attachedManifest,
     latestRelease: base + "/releases/latest",
   };
 }
@@ -224,8 +229,13 @@ export function verifyModuleFiles(files, { tag, repository, release = false } = 
     if (manifest.version !== parsed.version) throw new Error("Manifest version does not match the release tag.");
     if (manifest.url !== expected.repositoryUrl)
       throw new Error("Manifest repository URL does not match the release repository.");
-    if (manifest.manifest !== expected.manifest)
-      throw new Error("Manifest update URL must point to the latest release manifest.");
+    if (manifest.manifest !== expected.manifest) {
+      throw new Error(
+        expected.prerelease
+          ? "A prerelease manifest must point to module.json on its exact release tag."
+          : "A stable manifest must point to the latest stable release manifest.",
+      );
+    }
     if (manifest.download !== expected.download)
       throw new Error("Manifest download must point to module.zip on the exact release tag.");
     changelog = extractChangelogEntry(files.get("CHANGELOG.md").toString("utf8"), parsed.tag);

@@ -38,8 +38,14 @@
     {
       "path": ".github/workflows/release.yml",
       "gitBlobSha": "36ae8d34efc04cb133d82a11ecc63a4878438bc6",
-      "localPaths": [".github/workflows/release.yml", "build/release.js"],
-      "decision": "Use published-release or manual triggers, an id-wrapped module.zip, and maintained installation notes."
+      "localPaths": [
+        ".github/workflows/release.yml",
+        ".github/workflows/prerelease.yml",
+        ".github/workflows/publish.yml",
+        "build/release.js",
+        "build/publish-release.js"
+      ],
+      "decision": "Use explicit stable/prerelease publication, validate the selected commit, create its associated tag, and publish verified assets with curated release notes."
     },
     {
       "path": ".github/workflows/publish.yml",
@@ -174,6 +180,18 @@
       "tag": "v7",
       "sha": "949feb2413d6458794dcd2491c4babbbce0c15c1",
       "verifiedOn": "2026-11-19"
+    },
+    {
+      "repository": "actions/upload-artifact",
+      "tag": "v7.0.2",
+      "sha": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "verifiedOn": "2026-11-19"
+    },
+    {
+      "repository": "actions/download-artifact",
+      "tag": "v8.0.2",
+      "sha": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      "verifiedOn": "2026-11-19"
     }
   ],
   "intentionalDifferences": [
@@ -181,9 +199,9 @@
     "src/module.json, src/module.js, src/lang, src/styles, src/templates, src/assets, and src/scripts.",
     "A built module lives inside dist/<module-id>; the release ZIP preserves that directory.",
     "Release assets are named module.json and module.zip.",
-    "Download URLs are pinned to the exact tag; manifest URLs remain the latest stable update feed.",
+    "Download URLs are pinned to the exact tag; stable manifests use the latest stable feed and prerelease manifests remain pinned to their own tags.",
     "Independent Node-based ZIP packaging and verification.",
-    "No Git-history-derived release notes, pull-request workflows, scheduled checks, upstream bots, automatic merges, or external publication; release changes come from curated CHANGELOG entries.",
+    "No Git-history-derived release notes, pull-request workflows, scheduled checks, upstream bots, automatic merges, or Discord/Foundry website publication; release changes come from curated CHANGELOG entries.",
     "Development uses rebuilding and documented reloads; it does not promise parity with every upstream HMR behavior."
   ]
 }
