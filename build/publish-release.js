@@ -3,7 +3,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { parseArgs } from "node:util";
 import { PROJECT_ROOT, isMain, reportError } from "./config.js";
-import { parseReleaseTag, validateRepository, verifyPackage } from "./verify-package.js";
+import { parseReleaseTag, readProjectReleaseVersion, validateRepository, verifyPackage } from "./verify-package.js";
 import { renderChangelogSection, renderInstallationSection, updateReleaseBody } from "./release.js";
 
 const COMMIT_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/iu;
@@ -13,7 +13,7 @@ export function normalizeReleaseRequest(version, channel, commit) {
   if (!["stable", "prerelease"].includes(channel)) {
     throw new Error("Release channel must be stable or prerelease.");
   }
-  const parsed = parseReleaseTag(typeof version === "string" ? version.trim() : version);
+  const parsed = parseReleaseTag(version);
   const prerelease = parsed.version.split("+")[0].includes("-");
   if ((channel === "prerelease") !== prerelease) {
     throw new Error(
@@ -25,7 +25,7 @@ export function normalizeReleaseRequest(version, channel, commit) {
   if (typeof commit !== "string" || !COMMIT_PATTERN.test(commit)) {
     throw new Error("A full Git commit SHA is required; branches and abbreviated SHAs are not accepted.");
   }
-  return { version: parsed.version, tag: `v${parsed.version}`, channel, commit: commit.toLowerCase(), prerelease };
+  return { version: parsed.version, tag: parsed.version, channel, commit: commit.toLowerCase(), prerelease };
 }
 
 export function publicationMarker({ tag, channel, commit }) {
@@ -122,7 +122,9 @@ function assertOwnedDraft(release, request) {
 
 function compareStableVersions(left, right) {
   const a = parseReleaseTag(left).version.split("+")[0];
-  const b = parseReleaseTag(right).version.split("+")[0];
+  // Interpret historical tags for comparison without allowing prefixes on new releases.
+  const previousTag = typeof right === "string" && right.startsWith("v") ? right.slice(1) : right;
+  const b = parseReleaseTag(previousTag).version.split("+")[0];
   if (a.includes("-") || b.includes("-")) throw new Error("Latest stable release has an unexpected prerelease tag.");
   const leftParts = a.split(".").map(BigInt);
   const rightParts = b.split(".").map(BigInt);
@@ -200,10 +202,15 @@ export async function publishRelease({
   channel,
   commit,
   repository,
-  artifactDirectory = path.join(PROJECT_ROOT, "artifacts"),
+  projectRoot = PROJECT_ROOT,
+  artifactDirectory = path.join(projectRoot, "artifacts"),
   api,
 }) {
-  const request = normalizeReleaseRequest(version, channel, commit);
+  const sourceVersion = readProjectReleaseVersion(projectRoot);
+  if (version !== undefined && version !== sourceVersion) {
+    throw new Error("Publication version must match src/module.json.version exactly.");
+  }
+  const request = normalizeReleaseRequest(sourceVersion, channel, commit);
   validateRepository(repository);
   const artifacts = loadArtifacts(artifactDirectory, request, repository);
   api ??= createGitHubApi(process.env.GH_TOKEN);

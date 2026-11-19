@@ -1,13 +1,8 @@
 name: Create Prerelease
-run-name: Prerelease ${{ inputs.version }} from ${{ github.ref_name }}
+run-name: Prerelease from ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: Prerelease version to publish, for example 14.0.1-rc.1 or v14.0.1-rc.1
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -18,5 +13,4 @@ jobs:
       contents: write
     uses: ./.github/workflows/publish.yml
     with:
-      version: ${{ inputs.version }}
       channel: prerelease

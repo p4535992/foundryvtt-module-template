@@ -12,6 +12,8 @@ The release checks include:
 - A production Vite build and distribution validation.
 - An isolated release build, exact-tag manifest validation, ZIP layout and checksum checks, and byte-for-byte comparison of both manifest copies.
 
+Publication reads src/module.json.version automatically and requires an exact match with package.json.version and the dated changelog entry. Versions and tags use strict, unprefixed SemVer. The stable workflow rejects a prerelease suffix; the prerelease workflow requires one. Neither manual workflow has a version input.
+
 Run npm run check before preparing a release. The GitHub Check workflow uses the same command. The Create Release and Create Prerelease workflows repeat these checks, create the associated tag, and publish only after module.json and module.zip have been uploaded and verified.
 
 ## Foundry runtime validation

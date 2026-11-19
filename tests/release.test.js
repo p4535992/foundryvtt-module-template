@@ -17,6 +17,7 @@ import {
   collectModuleFiles,
   extractChangelogEntry,
   parseReleaseTag,
+  readProjectReleaseVersion,
   releaseUrls,
   validateRepository,
   verifyModuleFiles,
@@ -25,9 +26,9 @@ import {
 import { compareUpstream, readUpstreamBaseline } from "../utils/upstream.js";
 
 const REPOSITORY = "example-owner/example-module";
-const TAG = "v1.2.3";
+const TAG = "1.2.3";
 
-function fixture(t) {
+function fixture(t, version = TAG) {
   const temporary = path.join(PROJECT_ROOT, ".test-tmp");
   fs.mkdirSync(temporary, { recursive: true });
   const root = fs.mkdtempSync(path.join(temporary, "release-"));
@@ -37,7 +38,7 @@ function fixture(t) {
   const manifest = {
     id: "example-module",
     title: "Example Module",
-    version: "0.1.0",
+    version,
     compatibility: { minimum: "14" },
     esmodules: ["module.js"],
     styles: ["styles/module.css"],
@@ -52,8 +53,7 @@ function fixture(t) {
     "templates/example.hbs": "<p>{{title}}</p>\n",
     "assets/example.svg": '<svg xmlns="http://www.w3.org/2000/svg"/>\n',
     "README.md": "# Example Module\n",
-    "CHANGELOG.md":
-      "# Changelog\n\n## [Unreleased]\n\n## [1.2.3] - 2026-11-19\n\n### Added\n\n- Add the example module.\n\n## [1.2.2] - 2026-10-01\n\n### Fixed\n\n- Repair a previous version.\n",
+    "CHANGELOG.md": `# Changelog\n\n## [Unreleased]\n\n## [${version}] - 2026-11-19\n\n### Added\n\n- Add the example module.\n\n## [1.2.2] - 2026-10-01\n\n### Fixed\n\n- Repair a previous version.\n`,
     LICENSE: "MIT License\n",
     "THIRD_PARTY_NOTICES.md": "# Third-party notices\n",
     "wiki/runtime.md": "# Runtime\n",
@@ -63,41 +63,83 @@ function fixture(t) {
     fs.mkdirSync(path.dirname(absolute), { recursive: true });
     fs.writeFileSync(absolute, content);
   }
-  return { root, moduleDirectory, artifactDirectory, manifest, tag: TAG, repository: REPOSITORY };
+  fs.mkdirSync(path.join(root, "src"));
+  fs.writeFileSync(path.join(root, "src", "module.json"), JSON.stringify(manifest));
+  fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: manifest.id, version }));
+  return {
+    root,
+    projectRoot: root,
+    moduleDirectory,
+    artifactDirectory,
+    manifest,
+    tag: version,
+    repository: REPOSITORY,
+  };
 }
 
 test("release tags and repositories reject ambiguous or unsafe values", () => {
-  assert.deepEqual(parseReleaseTag("v1.2.3-rc.1+build.7"), {
-    tag: "v1.2.3-rc.1+build.7",
+  assert.deepEqual(parseReleaseTag("1.2.3-rc.1+build.7"), {
+    tag: "1.2.3-rc.1+build.7",
     version: "1.2.3-rc.1+build.7",
   });
-  for (const tag of ["main", "v1", "1.2", "01.2.3", "1.2.3-01", "../1.2.3", "v1.2.3\n", "v1.2.3/other"]) {
+  for (const tag of [
+    "main",
+    "v1",
+    "v1.2.3",
+    "v1.2.3-rc.1",
+    "v1.2.3+build.7",
+    "1.2",
+    "01.2.3",
+    "1.2.3-01",
+    "../1.2.3",
+    "1.2.3\n",
+    "1.2.3/other",
+  ]) {
     assert.throws(() => parseReleaseTag(tag), /semantic version/u, tag);
   }
   for (const repository of ["../repo", "owner/repo/other", "owner repo/name", "https://github.com/owner/repo"]) {
     assert.throws(() => validateRepository(repository), /owner\/name/u);
   }
   assert.equal(
-    releaseUrls(REPOSITORY, "v1.2.3+build.7").download,
-    "https://github.com/" + REPOSITORY + "/releases/download/v1.2.3%2Bbuild.7/module.zip",
+    releaseUrls(REPOSITORY, "1.2.3+build.7").download,
+    "https://github.com/" + REPOSITORY + "/releases/download/1.2.3%2Bbuild.7/module.zip",
   );
 });
 
 test("prerelease update manifests are pinned while stable versions retain the stable feed", () => {
   const stableManifest = "https://github.com/" + REPOSITORY + "/releases/latest/download/module.json";
-  const stable = releaseUrls(REPOSITORY, "v1.2.3+build-7");
+  const stable = releaseUrls(REPOSITORY, "1.2.3+build-7");
   assert.equal(stable.prerelease, false);
   assert.equal(stable.manifest, stableManifest);
   assert.equal(stable.stableManifest, stableManifest);
 
-  const prerelease = releaseUrls(REPOSITORY, "v1.2.3-rc.1+build-7");
-  const exactBase = "https://github.com/" + REPOSITORY + "/releases/download/v1.2.3-rc.1%2Bbuild-7";
+  const prerelease = releaseUrls(REPOSITORY, "1.2.3-rc.1+build-7");
+  const exactBase = "https://github.com/" + REPOSITORY + "/releases/download/1.2.3-rc.1%2Bbuild-7";
   assert.equal(prerelease.prerelease, true);
   assert.equal(prerelease.manifest, exactBase + "/module.json");
   assert.equal(prerelease.attachedManifest, prerelease.manifest);
   assert.equal(prerelease.download, exactBase + "/module.zip");
   assert.equal(prerelease.stableManifest, stableManifest);
   assert.notEqual(prerelease.manifest, prerelease.stableManifest);
+});
+
+test("the project release version comes from the source manifest and matches package metadata exactly", (t) => {
+  const input = fixture(t, "1.2.3-rc.1+build.7");
+  assert.equal(readProjectReleaseVersion(input.projectRoot), "1.2.3-rc.1+build.7");
+  fs.writeFileSync(path.join(input.projectRoot, "package.json"), JSON.stringify({ version: "1.2.3-rc.1+build.8" }));
+  assert.throws(() => readProjectReleaseVersion(input.projectRoot), /must match.*exactly/u);
+});
+
+test("source versions reject prefixes, whitespace, and invalid SemVer even when package versions agree", (t) => {
+  const input = fixture(t);
+  for (const version of ["v1.2.3", "1.2.3\n", " 1.2.3", "01.2.3", "1.2.3-01"]) {
+    fs.writeFileSync(
+      path.join(input.projectRoot, "src", "module.json"),
+      JSON.stringify({ ...input.manifest, version }),
+    );
+    fs.writeFileSync(path.join(input.projectRoot, "package.json"), JSON.stringify({ version }));
+    assert.throws(() => readProjectReleaseVersion(input.projectRoot), /semantic version/u, version);
+  }
 });
 
 test("packaging emits an id directory, exact-release URLs, identical manifests, and deterministic bytes", (t) => {
@@ -109,7 +151,7 @@ test("packaging emits an id directory, exact-release URLs, identical manifests, 
   const entries = decodeZip(firstZip);
   assert.equal(result.manifest.version, "1.2.3");
   assert.equal(result.manifest.manifest, "https://github.com/" + REPOSITORY + "/releases/latest/download/module.json");
-  assert.equal(result.manifest.download, "https://github.com/" + REPOSITORY + "/releases/download/v1.2.3/module.zip");
+  assert.equal(result.manifest.download, "https://github.com/" + REPOSITORY + "/releases/download/1.2.3/module.zip");
   assert.ok([...entries.keys()].every((name) => name.startsWith("example-module/")));
   assert.ok(entries.get("example-module/module.json").equals(external));
   assert.equal(entries.has("module.json"), false);
@@ -130,8 +172,7 @@ test("packaging emits an id directory, exact-release URLs, identical manifests, 
 });
 
 test("prerelease packaging verifies pinned manifests and rejects a stable-feed substitution", (t) => {
-  const input = fixture(t);
-  input.tag = "v1.2.3-rc.1";
+  const input = fixture(t, "1.2.3-rc.1");
   fs.writeFileSync(
     path.join(input.moduleDirectory, "CHANGELOG.md"),
     "# Changelog\n\n## [1.2.3-rc.1] - 2026-11-19\n\n### Added\n\n- Add the release candidate.\n",
@@ -154,6 +195,17 @@ test("prerelease packaging verifies pinned manifests and rejects a stable-feed s
   );
 });
 
+test("packaging rejects a built manifest version mismatch without stamping the manifest", (t) => {
+  const input = fixture(t);
+  const filename = path.join(input.moduleDirectory, "module.json");
+  const original = JSON.stringify({ ...input.manifest, version: "1.2.4" });
+  fs.writeFileSync(filename, original);
+  assert.throws(() => packageExistingDirectory(input), /version must match.*exactly/u);
+  assert.equal(fs.readFileSync(filename, "utf8"), original);
+  assert.equal(fs.existsSync(path.join(input.artifactDirectory, "module.json")), false);
+  assert.equal(fs.existsSync(path.join(input.artifactDirectory, "module.zip")), false);
+});
+
 test("missing manifest assets fail and remove stale release artifacts", (t) => {
   const input = fixture(t);
   packageExistingDirectory(input);
@@ -166,7 +218,7 @@ test("missing manifest assets fail and remove stale release artifacts", (t) => {
 test("release verifier rejects tag mismatches and divergent attached manifests", (t) => {
   const input = fixture(t);
   const result = packageExistingDirectory(input);
-  assert.throws(() => verifyPackage({ ...result, tag: "v9.0.0", repository: REPOSITORY }), /version does not match/u);
+  assert.throws(() => verifyPackage({ ...result, tag: "9.0.0", repository: REPOSITORY }), /version does not match/u);
   fs.appendFileSync(result.manifestPath, "\n");
   assert.throws(() => verifyPackage({ ...result, tag: TAG, repository: REPOSITORY }), /byte-identical/u);
 });
@@ -286,8 +338,8 @@ test("ZIP output cannot contain files outside the module id directory", (t) => {
 
 test("installation notes include specific assets and preserve author-written text", () => {
   const section = renderInstallationSection({ tag: TAG, repository: REPOSITORY, moduleId: "example-module" });
-  assert.match(section, /releases\/download\/v1\.2\.3\/module\.json/u);
-  assert.match(section, /releases\/download\/v1\.2\.3\/module\.zip/u);
+  assert.match(section, /releases\/download\/1\.2\.3\/module\.json/u);
+  assert.match(section, /releases\/download\/1\.2\.3\/module\.zip/u);
   assert.match(section, /latest stable release/u);
   assert.match(section, /follows the latest stable update feed/u);
   assert.match(section, /Data\/modules\/example-module\/module\.json/u);
@@ -295,7 +347,7 @@ test("installation notes include specific assets and preserve author-written tex
   const first = updateReleaseBody(original, section);
   assert.ok(first.startsWith(original));
   const withFooter = first + "\nA handwritten footer.\n";
-  const newer = renderInstallationSection({ tag: "v1.2.4", repository: REPOSITORY, moduleId: "example-module" });
+  const newer = renderInstallationSection({ tag: "1.2.4", repository: REPOSITORY, moduleId: "example-module" });
   const updated = updateReleaseBody(withFooter, newer);
   assert.ok(updated.startsWith(original));
   assert.ok(updated.endsWith("\nA handwritten footer.\n"));
@@ -306,13 +358,13 @@ test("installation notes include specific assets and preserve author-written tex
 
 test("prerelease installation notes explain the pinned policy and exact manifest", () => {
   const section = renderInstallationSection({
-    tag: "v1.2.3-rc.1",
+    tag: "1.2.3-rc.1",
     repository: REPOSITORY,
     moduleId: "example-module",
   });
   assert.match(section, /pinned to this exact prerelease/u);
   assert.match(section, /does not automatically follow later prereleases or the stable feed/u);
-  assert.match(section, /releases\/download\/v1\.2\.3-rc\.1\/module\.json/u);
+  assert.match(section, /releases\/download\/1\.2\.3-rc\.1\/module\.json/u);
   assert.doesNotMatch(section, /releases\/latest\/download\/module\.json/u);
   assert.doesNotMatch(section, /\{\{[A-Z_]+\}\}/u);
 });
@@ -342,12 +394,12 @@ test("manual upstream comparison requests only the explicit source-file allowlis
 test("changelog selection requires the exact version and supports explicit prerelease entries", () => {
   const text =
     "# Changelog\n\n## [Unreleased]\n\n### Added\n\n- Future work.\n\n## [1.2.3-rc.1] - 2026-11-19\n\n### Fixed\n\n- Fix the release candidate.\n\n## [1.2.2] - 2026-10-01\n\n### Changed\n\n- Older change.\n";
-  const entry = extractChangelogEntry(text, "v1.2.3-rc.1");
+  const entry = extractChangelogEntry(text, "1.2.3-rc.1");
   assert.equal(entry.version, "1.2.3-rc.1");
   assert.equal(entry.date, "2026-11-19");
   assert.match(entry.body, /Fix the release candidate/u);
   assert.doesNotMatch(entry.body, /Future work|Older change/u);
-  assert.throws(() => extractChangelogEntry(text, "v1.2.3"), /exactly one section/u);
+  assert.throws(() => extractChangelogEntry(text, "1.2.3"), /exactly one section/u);
 });
 
 test("changelog validation rejects missing, empty, duplicate, undated, and invalid entries", () => {

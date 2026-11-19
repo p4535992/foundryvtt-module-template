@@ -24,6 +24,7 @@ Notable changes to this template are recorded here. Entries are curated by maint
 
 ### Changed
 
+- Release workflows read the version from src/module.json automatically, require package.json and the dated changelog to match, and use that exact unprefixed semantic version as the tag.
 - Adapted the TypeScript-oriented upstream structure into JavaScript modules and Node.js helpers.
 - Reimplemented the requested Pin Cushion package layout with an independent ZIP builder and release verifier.
 - Migrated the legacy lint configuration into ESLint flat configuration, separating browser and Node environments and keeping runtime source linted.

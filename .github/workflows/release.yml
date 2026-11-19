@@ -1,13 +1,8 @@
 name: Create Release
-run-name: Release ${{ inputs.version }} from ${{ github.ref_name }}
+run-name: Release from ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: Stable version to publish, for example 14.0.0 or v14.0.0
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -18,5 +13,4 @@ jobs:
       contents: write
     uses: ./.github/workflows/publish.yml
     with:
-      version: ${{ inputs.version }}
       channel: stable

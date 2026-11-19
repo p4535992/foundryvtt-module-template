@@ -82,8 +82,9 @@ calls share the same in-flight operation and application instance. If rendering
 fails, a later `open()` can retry. An initialization failure remains a failure for
 that page session; reload after fixing its cause.
 
-The installed manifest is authoritative for the version because release packaging
-can stamp a new version into the staged manifest without editing the source.
+The installed manifest is authoritative for the runtime API's version. Release
+packaging preserves the source version and generates only the release URLs in the
+staged manifest.
 
 Startup failures are logged and reported to the current user. The readiness
 promise retains the rejection for consumers without producing an unhandled

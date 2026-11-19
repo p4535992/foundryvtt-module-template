@@ -9,6 +9,7 @@ import {
   collectModuleFiles,
   extractChangelogEntry,
   parseReleaseTag,
+  readProjectReleaseVersion,
   releaseUrls,
   validateModuleId,
   verifyModuleFiles,
@@ -148,8 +149,10 @@ export function packageExistingDirectory({ moduleDirectory, artifactDirectory, t
   if (!files.has("module.json")) throw new Error("Built module.json is missing.");
   const manifest = JSON.parse(files.get("module.json").toString("utf8"));
   validateModuleId(manifest.id);
+  if (manifest.version !== version) {
+    throw new Error("Built module.json.version must match the release tag exactly.");
+  }
   Object.assign(manifest, {
-    version,
     url: urls.repositoryUrl,
     manifest: urls.manifest,
     download: urls.download,
@@ -192,7 +195,11 @@ export function prepareRelease({
   artifactDirectory = path.join(PROJECT_ROOT, "artifacts"),
   keepStage = false,
 }) {
-  parseReleaseTag(tag);
+  const sourceVersion = readProjectReleaseVersion();
+  tag ??= sourceVersion;
+  if (parseReleaseTag(tag).version !== sourceVersion) {
+    throw new Error("Release tag must match src/module.json.version and package.json.version exactly.");
+  }
   releaseUrls(repository, tag);
   const manifest = readManifest();
   validateModuleId(manifest.id);

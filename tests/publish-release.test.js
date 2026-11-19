@@ -45,8 +45,11 @@ function artifactFixture(t, version = VERSION) {
     fs.mkdirSync(path.dirname(absolute), { recursive: true });
     fs.writeFileSync(absolute, content);
   }
-  packageExistingDirectory({ moduleDirectory, artifactDirectory, tag: `v${version}`, repository: REPOSITORY });
-  return { version, channel: "stable", commit: COMMIT, repository: REPOSITORY, artifactDirectory };
+  fs.mkdirSync(path.join(root, "src"));
+  fs.writeFileSync(path.join(root, "src", "module.json"), JSON.stringify(manifest));
+  fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: manifest.id, version }));
+  packageExistingDirectory({ moduleDirectory, artifactDirectory, tag: version, repository: REPOSITORY });
+  return { version, channel: "stable", commit: COMMIT, repository: REPOSITORY, artifactDirectory, projectRoot: root };
 }
 
 function missing() {
@@ -184,7 +187,7 @@ function fakeApi({
 test("publication request normalization separates channels and accepts only pinned full commits", () => {
   assert.deepEqual(normalizeReleaseRequest(VERSION, "stable", COMMIT.toUpperCase()), {
     version: VERSION,
-    tag: `v${VERSION}`,
+    tag: VERSION,
     channel: "stable",
     commit: COMMIT,
     prerelease: false,
@@ -192,6 +195,8 @@ test("publication request normalization separates channels and accepts only pinn
   assert.equal(normalizeReleaseRequest("14.0.1-rc.1", "prerelease", "a".repeat(64)).prerelease, true);
   assert.equal(normalizeReleaseRequest("14.0.1+build-dev", "stable", COMMIT).prerelease, false);
   for (const [version, channel, commit] of [
+    ["v14.0.1", "stable", COMMIT],
+    ["v14.0.1-rc.1", "prerelease", COMMIT],
     ["14.0.1-rc.1", "stable", COMMIT],
     [VERSION, "prerelease", COMMIT],
     [VERSION, "preview", COMMIT],
@@ -207,13 +212,14 @@ test("publication request normalization separates channels and accepts only pinn
 
 test("missing tags are created at the selected commit and publication follows both verified assets", async (t) => {
   const input = artifactFixture(t);
-  const stub = fakeApi({ latest: { tag_name: "v14.0.0" } });
+  const stub = fakeApi({ latest: { tag_name: "14.0.0" } });
   const result = await publishRelease({ ...input, api: stub.api });
-  assert.equal(result.tag, `v${VERSION}`);
+  assert.equal(result.tag, VERSION);
   assert.equal(result.commit, COMMIT);
   assert.equal(result.prerelease, false);
   const mutations = stub.mutations();
-  assert.deepEqual(mutations[0].options.json, { ref: `refs/tags/v${VERSION}`, sha: COMMIT });
+  assert.deepEqual(mutations[0].options.json, { ref: `refs/tags/${VERSION}`, sha: COMMIT });
+  assert.equal(mutations[1].options.json.tag_name, VERSION);
   assert.equal(mutations[1].options.json.target_commitish, COMMIT);
   assert.equal(mutations[1].options.json.draft, true);
   assert.equal(mutations.at(-1).method, "PATCH");
@@ -228,6 +234,42 @@ test("missing tags are created at the selected commit and publication follows bo
   const confirmation = stub.calls.findLastIndex((call) => call.method === "GET" && call.path.includes("/101/assets"));
   const publication = stub.calls.findIndex((call) => call.method === "PATCH");
   assert.ok(lastUpload < confirmation && confirmation < publication);
+  const manifestUpload = stub.calls.find((call) => call.options.upload && call.path.endsWith("?name=module.json"));
+  const manifest = JSON.parse(manifestUpload.options.body.toString("utf8"));
+  assert.equal(manifest.version, VERSION);
+  assert.equal(manifest.download, `https://github.com/${REPOSITORY}/releases/download/${VERSION}/module.zip`);
+});
+
+test("publication reads the source version automatically when no version is supplied", async (t) => {
+  const input = artifactFixture(t);
+  delete input.version;
+  const stub = fakeApi();
+  const result = await publishRelease({ ...input, api: stub.api });
+  assert.equal(result.version, VERSION);
+  assert.equal(result.tag, VERSION);
+  assert.equal(stub.state.tag.ref, `refs/tags/${VERSION}`);
+});
+
+test("source, package, artifact, and supplied version disagreements fail before any API request", async (t) => {
+  for (const scenario of ["supplied version", "package version", "artifact version", "prefixed source version"]) {
+    await t.test(scenario, async (t) => {
+      const input = artifactFixture(t);
+      const packageFile = path.join(input.projectRoot, "package.json");
+      const sourceFile = path.join(input.projectRoot, "src", "module.json");
+      if (scenario === "supplied version") input.version = "14.0.2";
+      if (scenario === "package version") fs.writeFileSync(packageFile, JSON.stringify({ version: "14.0.2" }));
+      if (["artifact version", "prefixed source version"].includes(scenario)) {
+        const version = scenario === "artifact version" ? "14.0.2" : "v14.0.1";
+        const manifest = JSON.parse(fs.readFileSync(sourceFile, "utf8"));
+        fs.writeFileSync(sourceFile, JSON.stringify({ ...manifest, version }));
+        fs.writeFileSync(packageFile, JSON.stringify({ version }));
+        delete input.version;
+      }
+      const stub = fakeApi();
+      await assert.rejects(publishRelease({ ...input, api: stub.api }));
+      assert.deepEqual(stub.calls, []);
+    });
+  }
 });
 
 test("prereleases publish with prerelease enabled and never replace the latest stable release", async (t) => {
@@ -235,11 +277,18 @@ test("prereleases publish with prerelease enabled and never replace the latest s
   const stub = fakeApi();
   const result = await publishRelease({ ...input, api: stub.api });
   assert.equal(result.prerelease, true);
+  assert.equal(result.tag, "14.0.2-rc.1");
+  assert.equal(stub.state.tag.ref, "refs/tags/14.0.2-rc.1");
   const create = stub.calls.find((call) => call.method === "POST" && call.path === `${PREFIX}/releases`);
   const publish = stub.calls.find((call) => call.method === "PATCH");
+  assert.equal(create.options.json.tag_name, "14.0.2-rc.1");
   assert.equal(create.options.json.prerelease, true);
   assert.equal(publish.options.json.prerelease, true);
   assert.equal(publish.options.json.make_latest, "false");
+  const manifestUpload = stub.calls.find((call) => call.options.upload && call.path.endsWith("?name=module.json"));
+  const manifest = JSON.parse(manifestUpload.options.body.toString("utf8"));
+  assert.equal(manifest.version, "14.0.2-rc.1");
+  assert.equal(manifest.download, `https://github.com/${REPOSITORY}/releases/download/14.0.2-rc.1/module.zip`);
 });
 
 test("annotated tags are peeled and a mismatched target fails without any mutation", async (t) => {
@@ -347,7 +396,7 @@ test("asset verification failure never makes the draft public", async (t) => {
 });
 
 test("older or equal stable versions fail without changing tags, releases, or assets", async (t) => {
-  for (const latest of ["v14.0.1", "v14.0.2"]) {
+  for (const latest of ["14.0.1", "14.0.2"]) {
     await t.test(latest, async (t) => {
       const input = artifactFixture(t);
       const stub = fakeApi({ latest: { tag_name: latest, draft: false, prerelease: false } });
@@ -360,8 +409,8 @@ test("older or equal stable versions fail without changing tags, releases, or as
 test("a newer stable release appearing during uploads prevents final publication", async (t) => {
   const input = artifactFixture(t);
   const stub = fakeApi({
-    latest: { tag_name: "v14.0.0", draft: false, prerelease: false },
-    latestAfterUploads: { tag_name: "v14.0.2", draft: false, prerelease: false },
+    latest: { tag_name: "14.0.0", draft: false, prerelease: false },
+    latestAfterUploads: { tag_name: "14.0.2", draft: false, prerelease: false },
   });
   await assert.rejects(publishRelease({ ...input, api: stub.api }), /newer than the current latest/u);
   assert.equal(stub.state.assets.length, 2);
@@ -371,6 +420,18 @@ test("a newer stable release appearing during uploads prevents final publication
     stub.calls.some((call) => call.method === "PATCH"),
     false,
   );
+});
+
+test("legacy prefixed latest releases are compared without adding prefixes to new tags", async (t) => {
+  const input = artifactFixture(t);
+  const older = fakeApi({ latest: { tag_name: "v14.0.0", draft: false, prerelease: false } });
+  const result = await publishRelease({ ...input, api: older.api });
+  assert.equal(result.tag, VERSION);
+  assert.equal(older.state.tag.ref, `refs/tags/${VERSION}`);
+
+  const same = fakeApi({ latest: { tag_name: "v14.0.1", draft: false, prerelease: false } });
+  await assert.rejects(publishRelease({ ...input, api: same.api }), /newer than the current latest/u);
+  assert.deepEqual(same.mutations(), []);
 });
 
 test("invalid local artifacts are rejected before any API request", async (t) => {

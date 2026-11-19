@@ -3,10 +3,6 @@ name: Publish Module
 on:
   workflow_call:
     inputs:
-      version:
-        description: Semantic version, optionally prefixed with v
-        required: true
-        type: string
       channel:
         description: stable or prerelease
         required: true
@@ -43,10 +39,9 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - name: Validate the version, channel, and selected revision
+      - name: Read and validate the source version, channel, and selected revision
         id: request
         env:
-          RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_CHANNEL: ${{ inputs.channel }}
           SOURCE_COMMIT: ${{ github.sha }}
         run: |
@@ -54,8 +49,9 @@ jobs:
           import fs from "node:fs";
           import { execFileSync } from "node:child_process";
           import { normalizeReleaseRequest } from "./build/publish-release.js";
+          import { readProjectReleaseVersion } from "./build/verify-package.js";
           const request = normalizeReleaseRequest(
-            process.env.RELEASE_VERSION,
+            readProjectReleaseVersion(),
             process.env.RELEASE_CHANNEL,
             process.env.SOURCE_COMMIT,
           );

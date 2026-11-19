@@ -144,27 +144,27 @@ The fallback retains its original MIT attribution. [Third-party notices](THIRD_P
 
 ## Development commands
 
-| Command                                                                            | Purpose                                                                 |
-| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `npm run dev`                                                                      | Create one development build with source maps.                          |
-| `npm run watch`                                                                    | Rebuild while source and copied resources change.                       |
-| `npm run hot`                                                                      | Start Vite's local proxy to the running Foundry server.                 |
-| `npm run stage`                                                                    | Create a staging build.                                                 |
-| `npm run build`                                                                    | Create the production distribution.                                     |
-| `npm run clean`                                                                    | Clean managed build output while protecting live compendium data.       |
-| `npm run link`                                                                     | Link the built module into the configured Foundry Data directory.       |
-| `npm run foundry -- --version 14`                                                  | Launch a configured Foundry installation.                               |
-| `npm run pack`                                                                     | Build declared compendiums from source data.                            |
-| `npm run unpack`                                                                   | Extract declared compendiums back into editable source data.            |
-| `npm run rename-module -- --help`                                                  | Show the identity-change options.                                       |
-| `npm run lint`                                                                     | Check JavaScript and JSON/source conventions.                           |
-| `npm run format:check`                                                             | Check formatting without changing files.                                |
-| `npm run format`                                                                   | Format project text files.                                              |
-| `npm test`                                                                         | Run behavioral tests with Node's built-in test runner.                  |
-| `npm run verify:package`                                                           | Validate a built module and its manifest paths.                         |
-| `npm run check`                                                                    | Run lint, formatting, tests, build, and package verification.           |
-| `npm run release:prepare -- --tag v1.2.3 --repository your-account/example-module` | Prepare release assets for an exact tag.                                |
-| `npm run upstream:check`                                                           | Manually compare approved upstream files against the recorded baseline. |
+| Command                                                               | Purpose                                                                 |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `npm run dev`                                                         | Create one development build with source maps.                          |
+| `npm run watch`                                                       | Rebuild while source and copied resources change.                       |
+| `npm run hot`                                                         | Start Vite's local proxy to the running Foundry server.                 |
+| `npm run stage`                                                       | Create a staging build.                                                 |
+| `npm run build`                                                       | Create the production distribution.                                     |
+| `npm run clean`                                                       | Clean managed build output while protecting live compendium data.       |
+| `npm run link`                                                        | Link the built module into the configured Foundry Data directory.       |
+| `npm run foundry -- --version 14`                                     | Launch a configured Foundry installation.                               |
+| `npm run pack`                                                        | Build declared compendiums from source data.                            |
+| `npm run unpack`                                                      | Extract declared compendiums back into editable source data.            |
+| `npm run rename-module -- --help`                                     | Show the identity-change options.                                       |
+| `npm run lint`                                                        | Check JavaScript and JSON/source conventions.                           |
+| `npm run format:check`                                                | Check formatting without changing files.                                |
+| `npm run format`                                                      | Format project text files.                                              |
+| `npm test`                                                            | Run behavioral tests with Node's built-in test runner.                  |
+| `npm run verify:package`                                              | Validate a built module and its manifest paths.                         |
+| `npm run check`                                                       | Run lint, formatting, tests, build, and package verification.           |
+| `npm run release:prepare -- --repository your-account/example-module` | Prepare release assets using the source version.                        |
+| `npm run upstream:check`                                              | Manually compare approved upstream files against the recorded baseline. |
 
 In hot mode, CSS can update without a page reload. JavaScript and other module resources use a full reload so lifecycle hooks and wrappers are not registered twice. Ordinary watch mode updates the output on disk; reload Foundry to load the rebuilt JavaScript.
 
@@ -178,9 +178,9 @@ EditorConfig uses the same indentation rules. Generated output, the npm lockfile
 
 Maintain [CHANGELOG.md](CHANGELOG.md) for module users. Record meaningful changes under `Unreleased`, grouped into `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, or `Security` as needed. Explain the user-visible result and include migration instructions when a change requires action.
 
-Before tagging a release, move the applicable entries into a dated heading such as `## [1.2.3] - 2026-11-19`, leaving `Unreleased` available for future work. Keep the newest version first. Use semantic versions consistently; the tag may add a leading `v`, but the changelog heading must not. A prerelease such as `1.2.3-beta.1` needs its own entry.
+Before releasing, set the same unprefixed semantic version in `src/module.json` and `package.json`, then move the applicable entries into a dated heading such as `## [1.2.3] - 2026-11-19`, leaving `Unreleased` available for future work. Keep the newest version first. The release tag and changelog version must match those source versions exactly. A prerelease such as `1.2.3-beta.1` needs its own entry and must appear in both source version fields.
 
-Release preparation reads the entry for the exact requested version and refuses to publish changelog content from `Unreleased` or another version. The workflow includes that entry and the generated installation instructions in the release description while preserving maintainer text outside its managed sections. The packaged module also includes the changelog.
+Release preparation reads the entry for the exact source version and refuses to publish changelog content from `Unreleased` or another version. The workflow includes that entry and the generated installation instructions in the release description while preserving maintainer text outside its managed sections. The packaged module also includes the changelog.
 
 ## Distribution and release assets
 
@@ -229,23 +229,23 @@ The attached `module.json` and the manifest inside the ZIP must be byte-identica
 
 ### Versioned downloads and the update feed
 
-For a release tagged `v1.2.3`, the generated manifest uses:
+For a release tagged `1.2.3`, the generated manifest uses:
 
 ```json
 {
     "version": "1.2.3",
     "manifest": "https://github.com/OWNER/REPOSITORY/releases/latest/download/module.json",
-    "download": "https://github.com/OWNER/REPOSITORY/releases/download/v1.2.3/module.zip"
+    "download": "https://github.com/OWNER/REPOSITORY/releases/download/1.2.3/module.zip"
 }
 ```
 
 `download` identifies the archive for that exact release. Stable releases use the latest stable manifest as their update feed. Prereleases point to the manifest attached to their own tag; choosing another prerelease or the stable channel is an explicit installation decision.
 
-The publication workflows accept versions with or without a leading `v` and always create canonical tags such as `v14.0.0` or `v14.0.1-rc.1`. The module version omits that prefix.
+The publication workflows read the version automatically from `src/module.json` and require an exact match with `package.json.version`. Tags use that same unprefixed semantic version, such as `14.0.0` or `14.0.1-rc.1`. A leading `v` is rejected rather than removed.
 
 ### Create a release or prerelease
 
-In GitHub Actions, choose **Create Release** for a stable version such as `14.0.0`, or **Create Prerelease** for a version with a suffix such as `14.0.1-rc.1`. Select the source branch or tag, enter the version, and run the workflow. Prepare the matching dated changelog entry in that source revision first.
+Prepare both source version fields and the matching dated changelog entry in the revision you intend to publish. In GitHub Actions, choose **Create Release** when the source version is stable, such as `14.0.0`, or **Create Prerelease** when it has a suffix, such as `14.0.1-rc.1`. Select the source branch or tag and run the workflow. There is no version input; the selected workflow validates that the source version belongs to its channel.
 
 The workflow checks and packages the exact selected commit before creating its tag. It then creates a draft release, uploads and verifies both assets, and publishes the completed release. No tag or release needs to exist before the first run. Existing tags must already point to the same commit; published releases cannot be replaced. A failed upload leaves a draft that can be resumed from the same source revision.
 

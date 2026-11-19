@@ -20,15 +20,25 @@ export function validateModuleId(id) {
 
 export function parseReleaseTag(tag) {
   if (typeof tag !== "string") throw new Error("A release tag is required.");
-  const version = tag.startsWith("v") ? tag.slice(1) : tag;
+  const version = tag;
   const match =
     /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/u.exec(
       version,
     );
   if (!match || match[4]?.split(".").some((item) => /^\d+$/u.test(item) && item.length > 1 && item.startsWith("0"))) {
-    throw new Error("Release tag must be a semantic version, optionally prefixed with v.");
+    throw new Error("Release tag must be a semantic version without a v prefix.");
   }
   return { tag, version };
+}
+
+export function readProjectReleaseVersion(projectRoot = PROJECT_ROOT) {
+  const manifest = JSON.parse(fs.readFileSync(path.join(projectRoot, "src", "module.json"), "utf8"));
+  const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, "package.json"), "utf8"));
+  const { version } = parseReleaseTag(manifest?.version);
+  if (packageJson?.version !== version) {
+    throw new Error("src/module.json.version must match package.json.version exactly.");
+  }
+  return version;
 }
 
 export function extractChangelogEntry(changelog, tag) {

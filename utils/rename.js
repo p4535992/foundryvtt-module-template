@@ -112,7 +112,7 @@ export async function planRename({ projectRoot = PROJECT_ROOT, id, title, descri
         if (repository) {
           data.url = newRepository;
           data.manifest = `${newRepository}/releases/latest/download/module.json`;
-          data.download = `${newRepository}/releases/download/v${data.version}/module.zip`;
+          data.download = `${newRepository}/releases/download/${data.version}/module.zip`;
           if (data.bugs) data.bugs = `${newRepository}/issues`;
           if (data.changelog) data.changelog = `${newRepository}/releases`;
         }

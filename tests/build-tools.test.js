@@ -175,10 +175,7 @@ test("renaming changes structured text but leaves images byte-identical", async 
   assert.equal(manifest.title, title);
   assert.equal(manifest.description, description);
   assert.equal(manifest.url, "https://github.com/another-owner/new-repository");
-  assert.equal(
-    manifest.download,
-    "https://github.com/another-owner/new-repository/releases/download/v0.1.0/module.zip",
-  );
+  assert.equal(manifest.download, "https://github.com/another-owner/new-repository/releases/download/0.1.0/module.zip");
   assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, "src/lang/en.json"), "utf8")), {
     "new-module": { title },
   });
