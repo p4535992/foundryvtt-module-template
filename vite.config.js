@@ -4,25 +4,26 @@ import { PROJECT_ROOT, getModuleDirectory, readFoundryConfig, readManifest } fro
 import { createResourcesPlugin } from "./build/build.js";
 
 export function createModuleConfig({
+  projectRoot = PROJECT_ROOT,
   command = "build",
   mode = "production",
   outRoot = "dist",
   watchMode = false,
 } = {}) {
-  const { id } = readManifest();
-  const local = command === "serve" ? readFoundryConfig({ optional: true }) : {};
+  const { id } = readManifest(projectRoot);
+  const local = command === "serve" ? readFoundryConfig({ optional: true, projectRoot }) : {};
   const moduleBase = `/modules/${id}/`;
   const foundryUrl = local.foundryUrl ?? "http://127.0.0.1:30000";
   if (!/^https?:\/\//.test(foundryUrl)) throw new Error("foundryUrl must be an http or https URL.");
-  const outDir = getModuleDirectory(outRoot);
+  const outDir = getModuleDirectory(outRoot, projectRoot);
   const compact = mode !== "development";
 
   return {
-    root: PROJECT_ROOT,
+    root: projectRoot,
     publicDir: false,
     base: command === "serve" ? moduleBase : "./",
     define: { BUILD_MODE: JSON.stringify(mode) },
-    plugins: [createResourcesPlugin({ outRoot, mode, watchMode })],
+    plugins: [createResourcesPlugin({ projectRoot, outRoot, mode, watchMode })],
     build: {
       outDir,
       emptyOutDir: false,
@@ -31,7 +32,7 @@ export function createModuleConfig({
       minify: false,
       watch: watchMode ? {} : null,
       lib: {
-        entry: path.join(PROJECT_ROOT, "src", "module.js"),
+        entry: path.join(projectRoot, "src", "module.js"),
         formats: ["es"],
         fileName: () => "module.js",
         cssFileName: "module",
@@ -56,14 +57,17 @@ export function createModuleConfig({
         },
       },
     },
-    css: { devSourcemap: mode === "development" },
+    css: {
+      devSourcemap: mode === "development",
+      preprocessorOptions: { scss: { additionalData: `$module-id: ${JSON.stringify(id)};\n` } },
+    },
     server: {
       host: "127.0.0.1",
       port: local.vitePort ?? 30001,
       strictPort: true,
       open: false,
       hmr: { path: "__vite_hmr" },
-      watch: { ignored: [`${path.resolve(PROJECT_ROOT, outRoot).replaceAll("\\", "/")}/**`, "**/packs-src/**"] },
+      watch: { ignored: [`${path.resolve(projectRoot, outRoot).replaceAll("\\", "/")}/**`, "**/packs-src/**"] },
       proxy: {
         "/socket.io": { target: foundryUrl, ws: true },
         [`^(?!${moduleBase})`]: { target: foundryUrl },

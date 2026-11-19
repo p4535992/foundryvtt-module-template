@@ -1,215 +1,180 @@
 # Runtime architecture
 
-This starter uses JavaScript ES modules. Foundry loads the generated `module.js`
-declared by the manifest; Vite compiles the source stylesheet and bundles the
-runtime. The package does not require TypeScript, Svelte, socketlib, or an installed
-libWrapper module for the default demo.
+The runtime is JavaScript ES modules targeting Foundry VTT 14. Foundry loads the generated `module.js` declared by the manifest. Vite bundles the runtime, compiles Sass, and prepares static resources. The settings application and native query service are ordinary module features; neither needs socketlib or an installed libWrapper module.
 
 ## Source layout
 
-| Path                                 | Responsibility                                                                  |
-| ------------------------------------ | ------------------------------------------------------------------------------- |
-| `src/module.json`                    | Source package manifest; the single source of the module ID, title, and version |
-| `src/module.js`                      | Stylesheet import and one call to register lifecycle hooks                      |
-| `src/scripts/constants.js`           | Manifest-derived IDs, asset paths, and localization keys                        |
-| `src/scripts/hooks/`                 | Foundry `init`, `setup`, and `ready` handlers                                   |
-| `src/scripts/api.js`                 | Public API, initialization outcome, and window-opening coordination             |
-| `src/scripts/settings.js`            | Setting registration and access                                                 |
-| `src/scripts/logger.js`              | Module-prefixed logging and user-facing error reporting                         |
-| `src/scripts/handlebars.js`          | Namespaced Handlebars helper registration                                       |
-| `src/scripts/applications/`          | Foundry application classes                                                     |
-| `src/scripts/wrappers.js`            | Optional integration registrations; empty by default                            |
-| `src/scripts/lib/libwrapper-shim.js` | Attributed, limited libWrapper fallback                                         |
-| `src/lang/`                          | Localization JSON, starting with `en.json`                                      |
-| `src/templates/`                     | Handlebars templates                                                            |
-| `src/styles/`                        | Source styles, scoped to the module's application class                         |
-| `src/assets/`                        | Static assets, including the original SVG demo icon                             |
+| Path                                          | Responsibility                                                                                |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `src/module.json`                             | Package identity, compatibility, resource paths, and source version                           |
+| `src/module.js`                               | Stylesheet import and one call to register lifecycle hooks                                    |
+| `src/scripts/constants.js`                    | Literal `MODULE_ID`, `MODULE_TITLE`, and `MODULE_VERSION`; derived paths and translation keys |
+| `src/scripts/hooks/`                          | Foundry `init`, `setup`, and `ready` handlers                                                 |
+| `src/scripts/api.js`                          | `ModuleApi`, readiness, status, and settings-window access                                    |
+| `src/scripts/module-registry.js`              | API attachment and guarded runtime socket alias                                               |
+| `src/scripts/socket.js`                       | `ModuleSocket`, backed by native Foundry queries                                              |
+| `src/scripts/socket-handlers.js`              | Named remote actions and their authorization policies                                         |
+| `src/scripts/settings.js`                     | Registration and access for the real client debug setting                                     |
+| `src/scripts/logger.js`                       | Module diagnostics and user-facing error reporting                                            |
+| `src/scripts/applications/module-settings.js` | `ModuleSettingsApplication`                                                                   |
+| `src/scripts/wrappers.js`                     | Optional libWrapper registrations; empty by default                                           |
+| `src/scripts/lib/libwrapper-shim.js`          | Attributed, limited libWrapper fallback                                                       |
+| `src/lang/`                                   | Translation JSON authored under the `__MODULE_ID__` root                                      |
+| `src/templates/module-settings.hbs`           | Settings application template                                                                 |
+| `src/styles/module.scss`                      | Styles scoped using injected `$module-id`                                                     |
+| `src/assets/`                                 | Static assets, including the reusable module icon                                             |
 
-Keep ordinary module logic under `src/scripts`. Introduce a dedicated service when
-it has a clear responsibility and callers. Pass dependencies explicitly when that
-makes a service easier to understand or test; this starter needs no service
-container or event-bus abstraction.
+Keep feature logic in the component that owns it. Add focused service or feature directories as the module grows. The starter needs no service container or additional event bus.
 
-## Initialization and public API
+## Identity and generated resources
 
-The entry point registers each lifecycle handler once. `init` and `setup` perform
-synchronous registration. `ready` awaits template loading before marking the
-module ready. Foundry's hook dispatcher does not wait for this module's async work,
-so consumers must use the API's readiness promise when they depend on that work.
+Only `src/module.json`, `package.json`, and `src/scripts/constants.js` need manual identity edits. Keep the three versions identical, the package name equal to the module id and `MODULE_ID`, and the manifest title equal to `MODULE_TITLE`. Constants are explicit exported string literals; paths, query names, and localization keys derive from them.
 
-| Stage   | Work                                                                                           |
-| ------- | ---------------------------------------------------------------------------------------------- |
-| `init`  | Attach the API to the module, register client settings and the helper                          |
-| `setup` | Read persisted settings to configure logging, then register any explicitly configured wrappers |
-| `ready` | Load the demo template, resolve module readiness, emit the namespaced ready hook               |
+The source language root is `__MODULE_ID__`. Build, watch, and hot mode transform that root structurally into the current module id. Sass receives `$module-id` from Vite, so `.#{$module-id}` scopes the generic `.module-settings` styles. Application class names and template filenames remain generic. See [configuration](configuration.md) for the identity contract.
 
-After `init`, the API is available at:
+Release packaging preserves the source version and generates release URLs. The API reports the installed package version, with `MODULE_VERSION` as a development fallback.
+
+## Initialization and readiness
+
+| Stage   | Work                                                                                                               |
+| ------- | ------------------------------------------------------------------------------------------------------------------ |
+| `init`  | Register the client debug setting, attach `ModuleApi`, and register named query handlers on every client           |
+| `setup` | Read persisted settings, configure module logging, and register explicitly configured wrappers                     |
+| `ready` | Preload the settings template, activate the socket service, expose its runtime alias, and resolve module readiness |
+
+Foundry does not await promises returned by hook callbacks. The API therefore owns a `whenReady` promise. Add new asynchronous startup work to this sequence before marking the module ready.
+
+The API is available after `init` at the public path:
 
 ```js
-const api = game.modules.get("foundryvtt-module-template").api;
-
+const api = game.modules.get(MODULE_ID).api;
 await api.whenReady;
-await api.open();
+await api.openSettings();
 ```
 
-`open()` also waits for readiness itself. The explicit `await api.whenReady` is
-useful when another module needs to perform different work before opening the demo.
-For an integration loaded before this module's `init`, look up the API from your
-own `ready` handler or listen for the custom hook:
+Import `MODULE_ID` from the constants module when writing module source. In a browser console, substitute the literal id from your manifest. Integrations initialized before this module should look up the API from their `ready` hook or observe `MODULE_ID + ".ready"`.
+
+| API member       | Contract                                                                      |
+| ---------------- | ----------------------------------------------------------------------------- |
+| `id`             | Module id                                                                     |
+| `title`          | Module title                                                                  |
+| `version`        | Installed package version, with the literal source constant as fallback       |
+| `ready`          | Whether initialization completed successfully                                 |
+| `status`         | `initializing`, `ready`, or `failed`                                          |
+| `error`          | Preserved initialization error, or `null`                                     |
+| `whenReady`      | Promise resolving to the API or rejecting with the initialization failure     |
+| `open()`         | Wait for readiness and render the settings application                        |
+| `openSettings()` | Alias for `open()`                                                            |
+| `getStatus()`    | Read-only status snapshot                                                     |
+| `socket`         | Canonical `ModuleSocket` service; present from init, inactive until readiness |
+
+`getStatus()` returns `{ id, title, version, ready, status, socketActive, socketProvider }`. The provider is `"foundry"` while the service is active and `null` otherwise.
+
+Concurrent opening calls share the same in-flight operation and application instance. Rendering failures permit a later opening attempt; initialization failures remain failures for that page session. Startup errors are reported, and the readiness promise retains the original rejection.
+
+## Public socket access
+
+Use **`game.modules.get(MODULE_ID).api.socket`** as the canonical service path. After readiness, while the service is active, the public convenience alias is **`game.modules.get(MODULE_ID).socket`**. Both refer to the same service instance.
 
 ```js
-Hooks.once("foundryvtt-module-template.ready", async (api) => {
-    try {
-        await api.open();
-    } catch (error) {
-        console.error("Could not open the module demo", error);
-    }
-});
+const module = game.modules.get(MODULE_ID);
+const api = module.api;
+await api.whenReady;
+
+const socket = api.socket;
+const runtimeAlias = game.modules.get(MODULE_ID).socket;
+console.assert(runtimeAlias === socket && socket.active);
+
+const gmStatus = await socket.executeAsGM("getStatus", {}, { timeout: 5000 });
+console.log(gmStatus);
 ```
 
-| API member  | Contract                                                                                       |
-| ----------- | ---------------------------------------------------------------------------------------------- |
-| `id`        | Module ID from the source manifest                                                             |
-| `version`   | Version from the installed package manifest, with the source version as a development fallback |
-| `ready`     | `true` only after this module finishes initialization successfully                             |
-| `status`    | `initializing`, `ready`, or `failed`                                                           |
-| `error`     | Initialization error, or `null`                                                                |
-| `whenReady` | Promise resolving to the API, or rejecting if initialization fails                             |
-| `open()`    | Promise resolving to the rendered demo application                                             |
+Foundry's `module.socket` field is also the core manifest flag. The source manifest keeps `"socket": true` as a boolean. The registry helper installs the runtime alias only when it finds an independent writable boolean property and confirms that `module.toObject(true).socket` and `module.toJSON().socket` remain boolean. It restores the original property if serialization changes and refuses unknown accessors.
 
-The API object is frozen; its getters reflect current state. Simultaneous `open()`
-calls share the same in-flight operation and application instance. If rendering
-fails, a later `open()` can retry. An initialization failure remains a failure for
-that page session; reload after fixing its cause.
+This guard is a deliberate compatibility check, not evidence of completed Foundry runtime verification. Test the alias and manifest serialization on the actual supported build. The service uses native query APIs; enabling the raw module socket namespace in the manifest does not make raw messages part of this service.
 
-The installed manifest is authoritative for the runtime API's version. Release
-packaging preserves the source version and generates only the release URLs in the
-staged manifest.
+## Native query contract
 
-Startup failures are logged and reported to the current user. The readiness
-promise retains the rejection for consumers without producing an unhandled
-rejection when no consumer exists. Do not mark the API ready before new asynchronous
-startup work finishes. If you add async work to `init` or `setup`, explicitly join
-that work into the `ready` sequence rather than assuming Foundry awaits hooks.
+`ModuleSocket` is an original adapter over [CONFIG.queries](https://foundryvtt.com/api/v14/variables/CONFIG.queries.html), [User.query](https://foundryvtt.com/api/v14/classes/foundry.documents.User.html#query), and [User.queryMany](https://foundryvtt.com/api/v14/classes/foundry.documents.User.html#queryMany). It uses core request handling and timeouts.
 
-Register setting definitions in `init`, but read their stored values only from
-`setup` onward. The logger is configured from its saved debug setting during
-`setup`, when Foundry has initialized client and world settings storage.
-
-## Settings, templates, and styles
-
-The sample setting and debug logging setting use the `client` scope, so the demo
-works for both GMs and players. A setting intended to control shared world behavior
-should instead use the appropriate scope and permission checks for its use case.
-Debug logging affects only this module; it does not set `CONFIG.debug.hooks`.
-
-The helper `foundryvtt-module-template-uppercase` is namespaced to avoid registering
-a generic `uppercase` helper shared by unrelated modules. Localization keys are
-derived from the module ID in JavaScript. The English JSON root, helper reference
-in the demo template, and SCSS selector also contain the module ID and must be
-updated when renaming the starter.
-
-The demo uses Foundry's `ApplicationV2` with `HandlebarsApplicationMixin`. It reads
-the sample setting into template context and writes through the settings API from
-a named action. Handlebars escapes ordinary interpolated values. The stylesheet is
-scoped below `.foundryvtt-module-template`, and the decorative SVG has empty alt text
-in the window because the adjacent heading already identifies the content.
-
-## Optional libWrapper integration
-
-The starter registers **no wrappers by default**. It does not patch application
-focus, token dragging, audio, or any other Foundry behavior on startup.
-
-Add a deliberate entry to the `definitions` array in `src/scripts/wrappers.js`
-when a module feature needs wrapping. For example, the following illustrates a
-wrapper that preserves its arguments, context, and return value:
+Register each action on every client during `init`:
 
 ```js
-{
-  target: "foundry.applications.api.ApplicationV2.prototype.bringToFront",
-  type: "WRAPPER",
-  wrapper: function (wrapped, ...args) {
-    return wrapped(...args);
-  },
+moduleSocket.register(
+    "readSummary",
+    async (payload, { user }) => ({ requesterId: user.id, requested: payload.label }),
+    {
+        authorize: (user, payload) => user.active && typeof payload.label === "string",
+    },
+);
+```
+
+The service prefixes the action with `MODULE_ID + "."`. Action names start with a letter and contain only letters, digits, underscores, or hyphens. Duplicate or conflicting registrations are refused. Repeating the same registration is safe only when its handler, policy, and registry entry are unchanged.
+
+The handler receives `(payload, { user })`. The authorization function receives `(user, payload)` and may be asynchronous; it must resolve to exactly `true`. Omitting it permits GM callers only. The base module registers only `getStatus`, with an explicit policy allowing active users to read its status.
+
+The service resolves the caller from core's query context back to the canonical active User in `game.users`. A claimed user id inside the payload never replaces that caller. Feature handlers must still validate operation-specific fields, ownership, and permissions before making changes. The current caller also needs the core [QUERY_USER permission](https://foundryvtt.com/api/v14/variables/CONST.USER_PERMISSIONS.html).
+
+Payloads must be JSON objects or arrays, without cycles or class instances. Return a JSON value from the handler; use `null` when there is no result. Document instances, functions, undefined values, and Error objects are not serializable service results.
+
+| Method                                                         | Behavior                                                                          |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `executeAsUser(action, userId, payload = {}, options = {})`    | Query one active user and return its result                                       |
+| `executeAsGM(action, payload = {}, options = {})`              | Query the one user selected by `game.users.activeGM`; fail when none is available |
+| `executeForUsers(action, userIds, payload = {}, options = {})` | Query a unique set of active users; duplicate ids are queried once                |
+| `executeForEveryone(action, payload = {}, options = {})`       | Query all active users, including the current user                                |
+| `executeForOthers(action, payload = {}, options = {})`         | Query active users other than the current user                                    |
+
+`options.timeout` is a positive finite duration in milliseconds; the service default is 10,000 ms. Self-targeted calls use the same native query path and authorization checks. Unknown or inactive targets fail explicitly.
+
+Multi-user methods return core's `Map<User, PromiseSettledResult>` unchanged. Inspect each outcome:
+
+```js
+const results = await api.socket.executeForEveryone("getStatus");
+for (const [user, outcome] of results) {
+    if (outcome.status === "fulfilled") console.log(user.name, outcome.value);
+    else console.warn(user.name, outcome.reason);
 }
 ```
 
-That example is documentation, not an active registration. Prefer public hooks or
-extension points when they can implement the feature. Use a regular function when
-you need libWrapper's `this` binding, and return the wrapped result. Await it only
-when the wrapped method is asynchronous and your additional work requires that.
+These calls collect settled outcomes; they do not promise socketlib's fire-and-forget broadcast semantics. Errors propagate through core's promises or individual settled results. There are no automatic retries or alternate transports. A timeout is not a safe signal to repeat a write: the remote action may already have run. Define an explicit idempotency policy before adding retries to a mutating feature.
 
-The adapter selects the real `globalThis.libWrapper` when present. Otherwise, its
-small fallback can wrap methods and getters/setters reachable through `globalThis`,
-including quoted property paths. It supports the basic wrapper, listener, and
-override modes. It does **not** implement the complete libWrapper API, conflict
-handling, priorities, or unregistration. A module needing those features should
-require the real library and use its documented API.
+Socketlib remains useful for projects with different compatibility or API requirements. Its [current README](https://github.com/farling42/foundryvtt-socketlib/blob/develop/README.md) recommends considering native queries on Foundry 14+, and its [official package](https://foundryvtt.com/packages/socketlib) declares Foundry 14 compatibility. This starter has no socketlib dependency, fallback, or copied socketlib implementation.
 
-A warning is scheduled only after a fallback registration succeeds. It logs once
-per page session and shows the GM a localized notification after Foundry is ready.
-An unmodified starter does not warn about a missing optional dependency. Unlike the
-upstream demonstration shim, this adaptation does not open a blocking fallback
-dialog or evaluate target strings as code.
+## Settings application, localization, and styles
 
-If a module actually uses wrapping, declare `lib-wrapper` as recommended or
-required according to the behavior it needs. The base manifest intentionally has
-an empty `relationships.requires` list. The fallback is not a reason to claim that
-all libWrapper functionality is available without the library.
+`ModuleSettingsApplication` uses Foundry's [ApplicationV2](https://foundryvtt.com/api/v14/classes/foundry.applications.api.ApplicationV2.html) with `HandlebarsApplicationMixin`. It renders `templates/module-settings.hbs`, shows the module identity and current debug state, and changes the real debug setting through `game.settings`.
 
-## Development reload behavior
+Debug uses client scope and defaults to false. A player changing it changes that client's diagnostics, not shared world behavior or global hook debugging. Setting definitions are registered during init; saved values are read from setup onward.
 
-Styles can use Vite's CSS hot replacement. JavaScript, translations, templates,
-the manifest, and other assets use the development tooling's full-page reload
-strategy. A clean Foundry initialization avoids duplicate hook/wrapper
-registrations, stale translations, and partially refreshed application state.
+The application builds localization keys and resource paths from the constants module. It uses Foundry's built-in template helpers and registers no global Handlebars helper. Its generic `ModuleSettingsApplication` class, template filename, and `.module-settings` styles remain reusable after an identity change.
 
-There is no runtime `import.meta.hot.accept()` or custom `lang-update` /
-`template-update` protocol. Those DFreds features were intentionally adapted to a
-full reload rather than copied with assumptions about English-only updates or
-rerendering every other module's window.
+## Optional libWrapper integration
 
-## Relationship to the DFreds template
+The starter registers no wrappers by default. Add an intentional definition in `src/scripts/wrappers.js` only when a feature needs it, and prefer public hooks or extension points when they fit.
 
-The lifecycle organization, small entry point, manifest-derived module ID,
-settings/logger/helper conventions, module API, and optional libWrapper fallback
-are adapted from the MIT-licensed
-[DFreds Module Template TS](https://github.com/DFreds/dfreds-module-template-ts/tree/main).
-The source has been converted to JavaScript and reorganized for this repository's
-`src` layout. Type-only declarations and imports do not become runtime files.
+The adapter selects `globalThis.libWrapper` when available. Its attributed fallback supports basic methods and getters/setters through explicit property paths, preserving the wrapped context and result. It does not promise complete libWrapper priorities, conflict handling, or unregistration. Features needing the full library should declare that dependency.
 
-The explicit ready stage, readiness promise, concurrent-open handling, namespaced
-helper, disabled demonstration patches, and lazy fallback warning are local
-design choices. Preserve the upstream MIT notices and the Rui Pinheiro shim header
-when distributing derived code. See the project license and upstream-sync notes
-for attribution and the feature mapping.
+A successful fallback registration logs a warning once and schedules a localized GM notification after Foundry is ready. An unchanged starter has no fallback registration to warn about. Preserve the Rui Pinheiro attribution and the full notices in the distribution.
+
+## Development and provenance
+
+CSS can update through Vite hot replacement. Runtime JavaScript, templates, translations, manifest, and asset changes use full-page reloads so registration and readiness restart coherently. There is no custom runtime HMR protocol or automatic rerender of other modules.
+
+The small entry point, lifecycle organization, settings/logger conventions, and limited libWrapper fallback are adapted from [DFreds Module Template TS](https://github.com/DFreds/dfreds-module-template-ts). Literal identity validation, structural translation generation, the settings application, `ModuleApi`, native `ModuleSocket`, authorization policies, and guarded runtime alias are local design choices. [upstream.json](../upstream.json) records the mapping without treating these additions as upstream code.
 
 ## Runtime smoke test
 
-These checks require a licensed Foundry installation and a disposable test world.
-The source manifest omits `compatibility.verified` until someone records a
-successful check on a specific Foundry build.
+Use a licensed Foundry installation and a disposable world. Record the exact Foundry build and client roles in [verification](verification.md) before setting `compatibility.verified`.
 
-1. Install or link the built package, enable it, and reload the world. Confirm that
-   initialization produces no errors and no libWrapper warning on the unchanged
-   starter.
-2. In the browser console, retrieve the module API, await `whenReady`, and check
-   that `ready` is true and `status` is `ready`.
-3. Run `await api.open()`. Confirm that the window displays the icon, English text,
-   styling, current setting, and manifest version without missing-file requests.
-4. Toggle the setting, close and reopen the window, and reload the world. Confirm
-   that the value persists for that client. Repeat as a player as well as a GM.
-5. Invoke `Promise.all([api.open(), api.open()])`. Confirm that only one application
-   instance is used.
-6. Enable debug logging and confirm that it prefixes this module's messages.
-   Confirm that global hook debugging has not been enabled by this module.
-7. During development, change a style and a template separately. Check the expected
-   style update/page reload and confirm there are no duplicate handlers afterward.
-8. If you add a wrapper, test the feature with real libWrapper installed, then test
-   any supported fallback scenario explicitly. The unchanged starter has no
-   wrapping behavior to test.
+1. Install the built ZIP or link the build, enable the module, and reload. Confirm clean initialization with a GM and player client.
+2. Retrieve `game.modules.get(MODULE_ID).api`, await `whenReady`, and check its identity, ready status, and `getStatus()` snapshot.
+3. Confirm that `game.modules.get(MODULE_ID).socket` is the active `api.socket` instance. Check that both `toObject(true).socket` and `toJSON().socket` still equal the manifest's boolean. Exercise Foundry's module management and serialization paths.
+4. Open the settings window with both public opening methods. Toggle debug, close, reopen, and reload. Confirm persistence for that client, correct localization, and unchanged global hook debugging.
+5. Call `Promise.all([api.open(), api.openSettings()])` and confirm a single application instance and no duplicate listeners.
+6. Exercise `getStatus` against one user, the active GM, everyone, and others. Inspect each multi-user outcome. Check behavior with QUERY_USER allowed and denied, no active GM, a disconnected target, and a timeout.
+7. For any new mutating action, verify that unauthorized callers are rejected before changes occur, including a payload containing a false caller id. Test its actual feature-specific ownership policy.
+8. Rename a test copy through the three identity files, rebuild, and verify translated keys, style scoping, template paths, API identity, and query names. Test translation/style changes in watch and hot mode.
+9. If a feature adds a wrapper, test real libWrapper and each supported fallback scenario explicitly.
 
-The isolated Node tests cover readiness/failure semantics, concurrent opening,
-retry behavior, fallback method/accessor preservation, and real-library selection.
-They do not claim to verify Foundry's browser API, rendering, multiplayer behavior,
-or a particular Foundry version.
+Controlled Node tests do not establish real Foundry socket delivery, caller context, rendering, browser timeouts, multiplayer behavior, or runtime alias compatibility. Complete those checks on the installed package.

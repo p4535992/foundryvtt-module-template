@@ -4,7 +4,8 @@
   "description": "A reusable JavaScript and Vite module template for Foundry Virtual Tabletop.",
   "private": true,
   "type": "module",
-  "license": "MIT",
+  "main": "module.js",
+  "license": "SEE LICENSE IN LICENSE",
   "author": "p4535992",
   "repository": {
     "type": "git",

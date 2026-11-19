@@ -11,7 +11,9 @@ Notable changes to this template are recorded here. Entries are curated by maint
 - Separate stable-release and prerelease workflows with associated tag creation, verified draft uploads, and publication after validation.
 - Guarded draft recovery and protection against changing existing tags, overwriting published releases, or moving the stable update feed backwards.
 - JavaScript and Vite foundation with a unified src/ directory for the manifest, entry point, translations, styles, templates, assets, and scripts.
-- Central lifecycle registration, settings, logging, Handlebars helpers, a public API, and an ApplicationV2 demonstration.
+- Central lifecycle registration, client debug settings, logging, a ModuleApi class, and a reusable ModuleSettingsApplication.
+- An original ModuleSocket service over native Foundry 14 queries, with explicit caller authorization, timeouts, and per-user settled results.
+- Public API and active runtime socket paths with readiness coordination and guarded preservation of the core boolean socket manifest flag.
 - Local Foundry configuration, linking, startup, module renaming, and compendium pack and unpack commands.
 - Isolated release builds with an id-named directory inside module.zip and a byte-identical module.json attached separately.
 - Version-specific ZIP download URLs, a latest stable manifest feed, and maintained English release instructions.
@@ -24,7 +26,10 @@ Notable changes to this template are recorded here. Entries are curated by maint
 
 ### Changed
 
-- Release workflows read the version from src/module.json automatically, require package.json and the dated changelog to match, and use that exact unprefixed semantic version as the tag.
+- Release workflows read the version from src/module.json automatically, require package.json, literal MODULE_VERSION, and the dated changelog to match, and use that exact unprefixed semantic version as the tag.
+- Identity changes target three authored files and generated lockfile root metadata; translation namespaces and Sass scoping follow that identity through the build.
+- Replaced the sample feature toggle and custom global Handlebars helper with a settings window for the real client debug setting.
+- Declared module.js as the package entry and referenced the preserved license files through package metadata.
 - Adapted the TypeScript-oriented upstream structure into JavaScript modules and Node.js helpers.
 - Reimplemented the requested Pin Cushion package layout with an independent ZIP builder and release verifier.
 - Migrated the legacy lint configuration into ESLint flat configuration, separating browser and Node environments and keeping runtime source linted.

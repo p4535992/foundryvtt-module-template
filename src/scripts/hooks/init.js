@@ -1,13 +1,10 @@
 import { moduleApi } from "../api.js";
-import { MODULE_ID } from "../constants.js";
-import { registerHandlebarsHelpers } from "../handlebars.js";
+import { registerModuleApi } from "../module-registry.js";
 import { registerSettings } from "../settings.js";
+import { registerSocketHandlers } from "../socket-handlers.js";
 
 export function onInit() {
-  const module = game.modules.get(MODULE_ID);
-  if (!module) throw new Error(`Foundry did not register the ${MODULE_ID} module.`);
-
-  module.api = moduleApi;
+  registerModuleApi(moduleApi);
   registerSettings();
-  registerHandlebarsHelpers();
+  registerSocketHandlers();
 }

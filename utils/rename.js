@@ -2,20 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { parseArgs } from "node:util";
-import { PROJECT_ROOT, isMain, readManifest, reportError } from "../build/config.js";
-
-const TEXT_EXTENSIONS = new Set([".js", ".json", ".css", ".scss", ".hbs", ".html", ".md", ".txt"]);
-const ROOT_FILES = [
-  "package.json",
-  "package-lock.json",
-  "README.md",
-  "CHANGELOG.md",
-  "vite.config.js",
-  "eslint.config.js",
-  "jsconfig.json",
-  "foundryconfig.example.json",
-  ".gitignore",
-];
+import { PROJECT_ROOT, isMain, reportError } from "../build/config.js";
+import { parseReleaseTag, releaseUrls } from "../build/verify-package.js";
 
 function repositoryUrl(value) {
   if (typeof value !== "string" || !value.trim()) throw new Error("--repository must not be empty.");
@@ -29,110 +17,114 @@ function repositoryUrl(value) {
   return normalized;
 }
 
-async function candidates(projectRoot) {
-  const result = [];
-  async function visit(directory) {
-    let entries;
-    try {
-      entries = await fs.readdir(directory, { withFileTypes: true });
-    } catch (error) {
-      if (error.code === "ENOENT") return;
-      throw error;
-    }
-    for (const entry of entries) {
-      const file = path.join(directory, entry.name);
-      if (entry.name.startsWith(".") || file === path.join(projectRoot, "src", "assets")) continue;
-      if (entry.isSymbolicLink()) throw new Error(`Refusing to rename through a symbolic link: ${file}`);
-      if (entry.isDirectory()) await visit(file);
-      else if (TEXT_EXTENSIONS.has(path.extname(file))) result.push(file);
-    }
+async function readIdentityFile(projectRoot, relative, { optional = false } = {}) {
+  const file = path.join(projectRoot, relative);
+  let stat;
+  try {
+    stat = await fs.lstat(file);
+  } catch (error) {
+    if (optional && error.code === "ENOENT") return null;
+    throw error;
   }
-  for (const directory of ["src", "build", "utils", "wiki"]) await visit(path.join(projectRoot, directory));
-  for (const name of ROOT_FILES) {
-    const file = path.join(projectRoot, name);
-    const stat = await fs.lstat(file).catch((error) => {
-      if (error.code === "ENOENT") return null;
-      throw error;
-    });
-    if (stat?.isSymbolicLink()) throw new Error(`Refusing to rename through a symbolic link: ${file}`);
-    if (stat?.isFile()) result.push(file);
-  }
-  return [...new Set(result)];
+  if (!stat.isFile() || stat.isSymbolicLink()) throw new Error(`Identity file must be a regular file: ${relative}`);
+  return { file, relative, before: await fs.readFile(file, "utf8") };
 }
 
-export async function planRename({ projectRoot = PROJECT_ROOT, id, title, description, repository } = {}) {
-  const manifest = readManifest(projectRoot);
+function updateLiteralConstants(source, values) {
+  const pattern =
+    /^export[ \t]+const[ \t]+(MODULE_ID|MODULE_TITLE|MODULE_VERSION)\s*=\s*("(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*')\s*;/gmu;
+  const counts = new Map(Object.keys(values).map((name) => [name, 0]));
+  for (const match of source.matchAll(pattern)) counts.set(match[1], counts.get(match[1]) + 1);
+  for (const [name, count] of counts) {
+    if (count !== 1) throw new Error(`constants.js must declare ${name} once as an exported string literal.`);
+  }
+  return source.replace(pattern, (_declaration, name) => `export const ${name} = ${JSON.stringify(values[name])};`);
+}
+
+function updateJsonFile(file, data) {
+  return {
+    ...file,
+    after:
+      JSON.stringify(JSON.parse(file.before)) === JSON.stringify(data)
+        ? file.before
+        : `${JSON.stringify(data, null, 2)}\n`,
+  };
+}
+
+export async function planRename({ projectRoot = PROJECT_ROOT, id, title, description, version, repository } = {}) {
   if (id !== undefined && !/^[a-z][a-z0-9-]*$/.test(id))
     throw new Error("--id must use lowercase letters, numbers, and hyphens, starting with a letter.");
   if (title !== undefined && (typeof title !== "string" || !title.trim() || /[\r\n]/.test(title)))
     throw new Error("--title must be a nonempty, single-line title.");
-  if ([id, title, description, repository].every((value) => value === undefined))
-    throw new Error("Provide --id, --title, --description, or --repository.");
+  if (description !== undefined && typeof description !== "string") throw new Error("--description must be a string.");
+  if ([id, title, description, version, repository].every((value) => value === undefined))
+    throw new Error("Provide --id, --title, --description, --version, or --repository.");
+
+  const [manifestFile, packageFile, constantsFile, lockFile] = await Promise.all([
+    readIdentityFile(projectRoot, "src/module.json"),
+    readIdentityFile(projectRoot, "package.json"),
+    readIdentityFile(projectRoot, "src/scripts/constants.js"),
+    readIdentityFile(projectRoot, "package-lock.json", { optional: true }),
+  ]);
+  const manifest = JSON.parse(manifestFile.before);
+  const packageJson = JSON.parse(packageFile.before);
   const newId = id ?? manifest.id;
-  const oldRepository =
+  if (!/^[a-z][a-z0-9-]*$/.test(newId)) throw new Error("The current module ID is invalid.");
+  const newTitle = title?.trim() ?? manifest.title;
+  if (typeof newTitle !== "string" || !newTitle.trim()) throw new Error("The module title must be a nonempty string.");
+  const newVersion = parseReleaseTag(version ?? manifest.version).version;
+  manifest.id = newId;
+  manifest.title = newTitle;
+  manifest.version = newVersion;
+  packageJson.name = newId;
+  packageJson.version = newVersion;
+  if (description !== undefined) {
+    manifest.description = description;
+    packageJson.description = description;
+  }
+  const currentRepository =
     typeof manifest.url === "string" && /^https:\/\/github\.com\/[^/]+\/[^/]+\/?$/.test(manifest.url)
       ? manifest.url.replace(/\/$/, "")
       : null;
-  const newRepository = repository !== undefined ? repositoryUrl(repository) : oldRepository;
-  const token = `__REPOSITORY_${randomUUID()}__`;
-
-  function replaceText(value, humanText) {
-    let result = value;
-    if (oldRepository) result = result.replaceAll(oldRepository, token);
-    result = result.replaceAll(manifest.id, newId);
-    if (humanText && title !== undefined && manifest.title) result = result.replaceAll(manifest.title, title.trim());
-    if (humanText && description !== undefined && manifest.description)
-      result = result.replaceAll(manifest.description, description);
-    if (oldRepository) result = result.replaceAll(token, newRepository ?? oldRepository);
-    return result;
+  const newRepository = repository === undefined ? currentRepository : repositoryUrl(repository);
+  if (newRepository && (repository !== undefined || version !== undefined)) {
+    const urls = releaseUrls(newRepository.slice("https://github.com/".length), newVersion);
+    manifest.url = urls.repositoryUrl;
+    manifest.manifest = urls.manifest;
+    manifest.download = urls.download;
+    if (Object.hasOwn(manifest, "bugs")) manifest.bugs = `${newRepository}/issues`;
+    if (Object.hasOwn(manifest, "changelog")) manifest.changelog = `${newRepository}/releases`;
+  }
+  if (repository !== undefined) {
+    packageJson.repository = { type: "git", url: `git+${newRepository}.git` };
+    packageJson.homepage = `${newRepository}#readme`;
+    packageJson.bugs = { url: `${newRepository}/issues` };
   }
 
-  function replaceJson(value) {
-    if (typeof value === "string") return replaceText(value, true);
-    if (Array.isArray(value)) return value.map(replaceJson);
-    if (value && typeof value === "object")
-      return Object.fromEntries(
-        Object.entries(value).map(([key, item]) => [replaceText(key, false), replaceJson(item)]),
-      );
-    return value;
-  }
-
-  const changes = [];
-  for (const file of await candidates(projectRoot)) {
-    const before = await fs.readFile(file, "utf8");
-    const relative = path.relative(projectRoot, file).split(path.sep).join("/");
-    let after;
-    if (path.extname(file) === ".json") {
-      const original = JSON.parse(before);
-      const data = replaceJson(original);
-      if (relative === "src/module.json") {
-        data.id = newId;
-        if (title !== undefined) data.title = title.trim();
-        if (description !== undefined) data.description = description;
-        if (repository) {
-          data.url = newRepository;
-          data.manifest = `${newRepository}/releases/latest/download/module.json`;
-          data.download = `${newRepository}/releases/download/${data.version}/module.zip`;
-          if (data.bugs) data.bugs = `${newRepository}/issues`;
-          if (data.changelog) data.changelog = `${newRepository}/releases`;
-        }
-      }
-      if (relative === "package.json") {
-        data.name = newId;
-        if (description !== undefined) data.description = description;
-        if (repository) data.repository = { type: "git", url: `${newRepository}.git` };
-      }
-      if (relative === "package-lock.json") {
-        data.name = newId;
-        if (data.packages?.[""]) data.packages[""].name = newId;
-      }
-      after = JSON.stringify(original) === JSON.stringify(data) ? before : `${JSON.stringify(data, null, 2)}\n`;
-    } else {
-      after = replaceText(before, [".md", ".txt"].includes(path.extname(file)));
+  const changes = [
+    updateJsonFile(manifestFile, manifest),
+    updateJsonFile(packageFile, packageJson),
+    {
+      ...constantsFile,
+      after: updateLiteralConstants(constantsFile.before, {
+        MODULE_ID: newId,
+        MODULE_TITLE: newTitle,
+        MODULE_VERSION: newVersion,
+      }),
+    },
+  ];
+  if (lockFile) {
+    const lock = JSON.parse(lockFile.before);
+    lock.name = newId;
+    lock.version = newVersion;
+    if (lock.packages?.[""]) {
+      lock.packages[""].name = newId;
+      lock.packages[""].version = newVersion;
+      if (packageJson.license !== undefined) lock.packages[""].license = packageJson.license;
     }
-    if (after !== before) changes.push({ file, relative, before, after });
+    changes.push(updateJsonFile(lockFile, lock));
   }
-  return changes;
+  return changes.filter((change) => change.after !== change.before);
 }
 
 export async function renameModule(options = {}) {
@@ -169,6 +161,7 @@ async function main() {
       id: { type: "string" },
       title: { type: "string" },
       description: { type: "string" },
+      version: { type: "string" },
       repository: { type: "string" },
       "dry-run": { type: "boolean", default: false },
       help: { type: "boolean", default: false },
@@ -176,10 +169,10 @@ async function main() {
   });
   if (values.help) {
     console.log(
-      'Usage: npm run rename-module -- [--id my-module] [--title "My Module"] [--description "Description"] [--repository owner/repository] [--dry-run]',
+      'Usage: npm run rename-module -- [--id my-module] [--title "My Module"] [--description "Description"] [--version 1.0.0] [--repository owner/repository] [--dry-run]',
     );
     console.log(
-      "Updates local text files only. Assets, generated builds, and existing Foundry links are left untouched.",
+      "Updates src/module.json, package.json, and src/scripts/constants.js, plus generated package-lock.json root metadata.",
     );
     return;
   }

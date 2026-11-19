@@ -1,11 +1,11 @@
-.foundryvtt-module-template {
-    .module-demo {
+.#{$module-id} {
+    .module-settings {
         display: grid;
         gap: 1rem;
         padding: 1.25rem;
     }
 
-    .module-demo__header {
+    .module-settings__header {
         display: flex;
         align-items: center;
         gap: 0.9rem;
@@ -16,12 +16,12 @@
         }
     }
 
-    .module-demo__icon {
+    .module-settings__icon {
         flex: 0 0 auto;
         border: 0;
     }
 
-    .module-demo__eyebrow {
+    .module-settings__eyebrow {
         margin: 0 0 0.3rem;
         font-size: 0.65rem;
         font-weight: 700;
@@ -29,12 +29,12 @@
         opacity: 0.7;
     }
 
-    .module-demo__description {
+    .module-settings__description {
         margin: 0;
         line-height: 1.5;
     }
 
-    .module-demo__setting {
+    .module-settings__setting {
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -44,7 +44,7 @@
         padding: 0.8rem;
     }
 
-    .module-demo__footer {
+    .module-settings__footer {
         display: flex;
         justify-content: space-between;
         gap: 1rem;

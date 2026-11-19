@@ -5,6 +5,26 @@ them to JavaScript, Vite, and ESLint 10. The official D&D 5e repository supplies
 second reference for modern Foundry development. Its project-specific formatting
 rules and additional lint plugins are not dependencies of this starter.
 
+## Module identity
+
+Only three authored files need manual identity changes:
+
+| File                       | Required identity values                                                                                        |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `src/module.json`          | `id`, `title`, and `version`, plus module authors and project URLs                                              |
+| `package.json`             | `name` matching the module id and `version` matching the manifest, plus package authors and repository metadata |
+| `src/scripts/constants.js` | Explicit exported string literals `MODULE_ID`, `MODULE_TITLE`, and `MODULE_VERSION` matching the manifest       |
+
+Keep versions as strict unprefixed SemVer, such as `14.0.0` or `14.0.1-rc.1`. Runtime code imports the constants; build and source checks validate their equality with the JSON metadata. Derived paths, query names, and localization keys must not introduce another hard-coded module identity.
+
+`npm run rename-module` updates those three files and the generated lockfile root metadata. It supports `--id`, `--title`, `--version`, `--description`, `--repository`, and `--dry-run`. It does not rewrite unrelated source or historical documentation. When editing by hand, regenerate `package-lock.json` after changing package metadata.
+
+Source translation JSON uses `__MODULE_ID__` as its root key. `build/identity.js` transforms that root structurally for builds, watch synchronization, and hot responses. Translation text remains authored text. Sass receives `$module-id` from Vite; the source selector `.#{$module-id}` scopes generic `.module-settings` styles. Neither mechanism requires renaming templates or application classes.
+
+The package entry is `main: "module.js"`, and package license metadata is `"SEE LICENSE IN LICENSE"`. These fields do not replace Foundry's `esmodules` declaration or the actual `LICENSE` and `THIRD_PARTY_NOTICES.md` files. Preserve those notices in the distribution.
+
+The source manifest retains its boolean `"socket": true`. The runtime convenience alias at `game.modules.get(MODULE_ID).socket` must not become a manifest value. The native query service is canonically available at `game.modules.get(MODULE_ID).api.socket`; see [runtime](runtime.md) for the guarded alias and serialization checks.
+
 ## Configuration file map
 
 | Original Pin Cushion file                                                                             | Active file here   | Adaptation                                                                                                                        |

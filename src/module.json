@@ -26,7 +26,7 @@
     "requires": []
   },
   "packs": [],
-  "socket": false,
+  "socket": true,
   "library": false,
   "url": "https://github.com/p4535992/foundryvtt-module-template",
   "manifest": "https://github.com/p4535992/foundryvtt-module-template/releases/latest/download/module.json",

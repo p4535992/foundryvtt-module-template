@@ -1,8 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const root = fileURLToPath(new URL("../", import.meta.url));
+import { PROJECT_ROOT, isMain, reportError } from "../build/config.js";
+import { renderLanguageSource, validateProjectIdentity } from "../build/identity.js";
 
 async function collectFiles(directory) {
   const files = [];
@@ -44,8 +43,9 @@ function validateTranslations(value, file, prefix = "") {
   }
 }
 
-async function main() {
-  const sourceRoot = path.join(root, "src");
+export async function checkSource({ projectRoot = PROJECT_ROOT } = {}) {
+  const { manifest, packageJson: pkg } = await validateProjectIdentity({ projectRoot });
+  const sourceRoot = path.join(projectRoot, "src");
   const sourceFiles = await collectFiles(sourceRoot);
   const rootFiles = [
     "package.json",
@@ -53,27 +53,25 @@ async function main() {
     ".prettierrc.json",
     "foundryconfig.example.json",
     "upstream.json",
-  ].map((file) => path.join(root, file));
-  const jsonFiles = [...rootFiles, ...sourceFiles.filter((file) => file.endsWith(".json"))];
+  ].map((file) => path.join(projectRoot, file));
+  const existingRootFiles = [];
+  for (const file of rootFiles) {
+    try {
+      await fs.access(file);
+      existingRootFiles.push(file);
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+  }
+  const jsonFiles = [...existingRootFiles, ...sourceFiles.filter((file) => file.endsWith(".json"))];
   for (const file of jsonFiles) {
     try {
       JSON.parse(await fs.readFile(file, "utf8"));
     } catch (error) {
-      throw new Error(`Invalid JSON in ${path.relative(root, file)}: ${error.message}`, { cause: error });
+      throw new Error(`Invalid JSON in ${path.relative(projectRoot, file)}: ${error.message}`, { cause: error });
     }
   }
 
-  const manifest = JSON.parse(await fs.readFile(path.join(sourceRoot, "module.json"), "utf8"));
-  const pkg = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8"));
-  requireCondition(
-    /^[a-z][a-z0-9-]*$/.test(manifest.id),
-    "The module ID must use lowercase letters, numbers, and hyphens.",
-  );
-  requireCondition(pkg.name === manifest.id, "package.json name must match src/module.json id.");
-  requireCondition(pkg.version === manifest.version, "package.json version must match src/module.json version.");
-  requireCondition(typeof manifest.title === "string" && manifest.title.trim(), "The module title is required.");
-  requireCondition(typeof manifest.version === "string" && manifest.version.trim(), "The module version is required.");
-  requireCondition(pkg.type === "module", "package.json must declare type: module.");
   requireCondition(manifest.esmodules?.includes("module.js"), "The manifest must load module.js.");
   requireCondition(manifest.styles?.includes("styles/module.css"), "The manifest must load styles/module.css.");
   requireCondition(
@@ -90,11 +88,9 @@ async function main() {
       isRelativePath(language.path) && language.path.startsWith("lang/"),
       "Translation paths must be relative paths under lang/.",
     );
-    const translations = JSON.parse(await fs.readFile(path.join(sourceRoot, language.path), "utf8"));
-    requireCondition(
-      Object.hasOwn(translations, manifest.id),
-      `${language.path} must contain the module ID namespace.`,
-    );
+    const bytes = await fs.readFile(path.join(sourceRoot, language.path));
+    const translations = JSON.parse(bytes.toString("utf8"));
+    renderLanguageSource(bytes, { moduleId: manifest.id, filename: language.path });
     validateTranslations(translations, language.path);
   }
   requireCondition(languageCodes.has("en"), "The template must include its English source language.");
@@ -102,7 +98,7 @@ async function main() {
   for (const file of sourceFiles) {
     requireCondition(
       !/\.(?:ts|mts|cts|tsx)$/.test(file),
-      `Runtime source must be JavaScript: ${path.relative(root, file)}`,
+      `Runtime source must be JavaScript: ${path.relative(projectRoot, file)}`,
     );
   }
   for (const dependency of Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })) {
@@ -113,10 +109,12 @@ async function main() {
       `Remove the TypeScript-only direct dependency: ${dependency}`,
     );
   }
-  console.log(`Validated ${jsonFiles.length} JSON files and the JavaScript module source contract.`);
+  return { moduleId: manifest.id, jsonFileCount: jsonFiles.length };
 }
 
-main().catch((error) => {
-  console.error(error.message);
-  process.exitCode = 1;
-});
+async function main() {
+  const result = await checkSource();
+  console.log(`Validated ${result.jsonFileCount} JSON files and the JavaScript module source contract.`);
+}
+
+if (isMain(import.meta.url)) void main().catch(reportError);

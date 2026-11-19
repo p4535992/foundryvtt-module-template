@@ -1,13 +1,11 @@
 # Foundry VTT Module Template
 
-[![Checks](https://github.com/p4535992/foundryvtt-module-template/actions/workflows/check.yml/badge.svg?branch=main)](https://github.com/p4535992/foundryvtt-module-template/actions/workflows/check.yml)
-[![Release](https://github.com/p4535992/foundryvtt-module-template/actions/workflows/release.yml/badge.svg)](https://github.com/p4535992/foundryvtt-module-template/actions/workflows/release.yml)
-[![Prerelease](https://github.com/p4535992/foundryvtt-module-template/actions/workflows/prerelease.yml/badge.svg)](https://github.com/p4535992/foundryvtt-module-template/actions/workflows/prerelease.yml)
 [![JavaScript](https://img.shields.io/badge/source-JavaScript-f7df1e)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 [![Foundry VTT](https://img.shields.io/badge/Foundry_VTT-v14_target-orange)](https://foundryvtt.com/api/v14/)
+[![Vite](https://img.shields.io/badge/build-Vite-646cff)](https://vite.dev/guide/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A reusable **JavaScript + Vite** foundation for Foundry Virtual Tabletop modules. It combines a small Foundry lifecycle, optional libWrapper integration, development tools, and reproducible release packaging.
+A reusable **JavaScript + Vite** foundation for Foundry Virtual Tabletop modules. It combines a small Foundry lifecycle, a settings application, native Foundry 14 remote queries, optional libWrapper integration, development tools, and reproducible release packaging.
 
 The starting module and package version is **14.0.0**, targeting Foundry VTT 14. See [verification](wiki/verification.md) for the automated checks and the remaining Foundry runtime validation.
 
@@ -15,24 +13,18 @@ The project adapts useful features from [DFreds Module Template TS](https://gith
 
 ## What is included
 
-- JavaScript ES modules with a Vite build and development proxy.
-- One module identity, read from `src/module.json`.
-- Explicit `init`, `setup`, and `ready` handlers, with a public readiness contract.
-- Namespaced settings, localization, Handlebars helpers, and logging.
-- A small ApplicationV2 example that connects the template, styles, settings, and API.
-- Optional libWrapper support; a fresh module registers no wrappers.
-- English source strings in `src/lang/en.json`.
-- Development builds, watch mode, safe Foundry linking, a launcher, and optional compendium tools.
-- A rename command that protects binary assets and changes structured metadata.
-- Release assets named `module.json` and `module.zip`, with version-specific download URLs.
-- An archive containing the correctly named module directory.
-- English release installation instructions with links generated for the exact release.
-- Separate stable and prerelease workflows that create the associated tag after validation and publish only after both assets are ready.
-- A human-written changelog, with the matching version entry included in release notes.
-- Prettier conventions carried over from Pin Cushion, with formatting checks for source and documentation.
-- Manual, file-based upstream comparison, with a recorded baseline and no automatic code replacement.
+- JavaScript ES modules with Vite builds, watch mode, and a development proxy.
+- Three explicit identity files, with derived asset paths, translation namespaces, and style scoping.
+- `ModuleApi` with readiness, status, settings-window access, and a native `ModuleSocket` service.
+- A reusable `ModuleSettingsApplication` for the module's real client debug setting.
+- Named remote actions using Foundry 14 `CONFIG.queries`, `User.query`, and `User.queryMany`.
+- Optional libWrapper integration with no registered wrappers in a fresh module.
+- Targeted renaming, safe Foundry linking, a launcher, and optional compendium tools.
+- Release assets named `module.json` and `module.zip`, with the module-id directory inside the archive.
+- Separate stable and prerelease workflows, source-driven unprefixed tags, and curated release descriptions.
+- Versioned guides in `wiki/`, consistent formatting, and manual upstream source comparison.
 
-The template targets Foundry v14. Set `compatibility.verified` only after testing your derived module in the actual Foundry build you intend to support. The initial manifest deliberately records the minimum target without claiming a completed runtime verification.
+The template targets Foundry v14. Set `compatibility.verified` only after testing the derived module in an actual Foundry build. Automated source checks do not establish runtime compatibility.
 
 ## Requirements
 
@@ -44,32 +36,42 @@ Foundry runs the generated JavaScript. Node, Vite, Sass, and linting tools are d
 
 ## Create your module
 
-Create your own repository from this project and clone it outside Foundry's data directory.
+Create your repository from this project and clone it outside Foundry's data directory.
 
 ```sh
 nvm use
 npm ci
-npm run rename-module -- --id example-module --title "Example Module" --description "An example Foundry VTT module." --repository your-account/example-module
+npm run rename-module -- --id example-module --title "Example Module" --version 14.0.0 --description "An example Foundry VTT module." --repository your-account/example-module
 ```
 
-The command updates the module identity, package and lockfile metadata, namespaced strings, and repository links. Review the result and your author details before publishing, then commit the updated lockfile with the source changes.
+Only three authored files contain the identity fields that need manual changes:
 
-Copy `foundryconfig.example.json` to `foundryconfig.json` and set your local paths. The local file is ignored by Git. Its `dataPath` must point to Foundry's **Data directory**, the directory containing `modules`, `systems`, and `worlds`.
+| File                       | Identity and metadata                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `src/module.json`          | Module id, title, version, author information, compatibility, and project URLs                          |
+| `package.json`             | Matching package name and version, author information, and repository metadata                          |
+| `src/scripts/constants.js` | Literal `MODULE_ID`, `MODULE_TITLE`, and `MODULE_VERSION`; paths and translation keys derive from these |
+
+The module id must match the package name and `MODULE_ID`. The title must match `MODULE_TITLE`, and all three version fields must agree exactly. Keep these constants as exported string literals. The source checker rejects an inconsistent identity, and the rename utility refuses computed constants.
+
+The rename command changes those three files and refreshes the generated root metadata in `package-lock.json`. It does not search and replace unrelated source, documentation, changelog history, or provenance. Use `--dry-run` to review the intended edits. Review author details before publishing. If editing the three files manually, regenerate the lockfile and commit it with the source changes.
+
+Translation source uses the root key `__MODULE_ID__`. Build, watch, and hot mode replace that root structurally with the current id. Vite injects Sass `$module-id` for style scoping. Generic application classes and template filenames do not need renaming.
+
+Copy `foundryconfig.example.json` to `foundryconfig.json` and set your local paths. Its `dataPath` is Foundry's **Data directory**, containing `modules`, `systems`, and `worlds`.
 
 ```sh
 npm run dev
 npm run link
 ```
 
-The link command connects `dist/<module-id>/` to `Data/modules/<module-id>/`. It reuses an identical existing link and refuses to replace a real directory. Enable the module in a test world and reload Foundry.
-
-Open the example application from the browser console:
+The link command connects `dist/<module-id>/` to `Data/modules/<module-id>/`. Enable the module in a test world and reload Foundry. Open its settings window from the browser console using your actual module id:
 
 ```js
-await game.modules.get("example-module").api.open();
+await game.modules.get("example-module").api.openSettings();
 ```
 
-See [development tools](wiki/development.md) for local configuration, watch behavior, compendiums, and the launcher.
+See [development](wiki/development.md) and [configuration](wiki/configuration.md) for local setup, identity validation, watch mode, compendiums, and project conventions.
 
 ## Source structure
 
@@ -78,43 +80,41 @@ src/
   module.json                 Package metadata and module identity
   module.js                   Styles and lifecycle entry point
   lang/
-    en.json                   Namespaced English source strings
+    en.json                   English strings under __MODULE_ID__
   styles/
-    module.scss               Source styles, compiled to styles/module.css
+    module.scss               Sass styles with injected $module-id
   templates/
-    demo.hbs                  Example ApplicationV2 template
+    module-settings.hbs       Reusable settings template
   assets/
-    module-icon.svg           Original, reusable module artwork
+    module-icon.svg           Original reusable artwork
   scripts/
-    constants.js              Identity and translation key helpers
-    api.js                    Public readiness and application API
-    settings.js               Settings registration and access
-    logger.js                 Module-scoped logging and errors
-    handlebars.js             Namespaced template helpers
+    constants.js              Literal identity constants and derived paths
+    api.js                    ModuleApi class and readiness contract
+    module-registry.js        API attachment and guarded runtime socket alias
+    socket.js                 ModuleSocket over native Foundry queries
+    socket-handlers.js        Named operations and authorization policies
+    settings.js               Client debug setting registration and access
+    logger.js                 Module-scoped diagnostics
     wrappers.js               Optional libWrapper integration
-    hooks/
-      index.js                Explicit lifecycle registration
-      init.js                 Registration and API exposure
-      setup.js                Integration setup
-      ready.js                World-ready initialization
+    hooks/                    init, setup, and ready registration
     applications/
-      module-demo.js          ApplicationV2 example
+      module-settings.js      ModuleSettingsApplication
     lib/
       libwrapper-shim.js      Attributed optional fallback
 
-build/                        Build and release package implementation
+build/                        Build, identity validation, and release machinery
 utils/                        Node-only developer utilities
 tests/                        Built-in Node test runner suites
-wiki/                         Configuration, development, runtime, release, and upstream guides
-.github/workflows/            Checks and release packaging
+wiki/                         Configuration, development, runtime, and release guides
+.github/workflows/            Checks and explicit publication workflows
 .github/RELEASE_TEMPLATE.md    English release installation section
 CHANGELOG.md                  Unreleased work and dated version history
 foundryconfig.example.json    Portable local configuration example
-upstream.json                 Reviewed upstream files and hashes
+upstream.json                 Reviewed upstream files and adaptation decisions
 vite.config.js                JavaScript Vite configuration
 ```
 
-`src/` contains the module's authored source and resources. `build/` and `utils/` run in Node and are not shipped to Foundry. Generated output and machine-specific configuration are ignored by Git.
+`src/` contains the authored runtime and resources. `build/` and `utils/` run in Node and are excluded from the installed module. The package declares `main: "module.js"`; Foundry loads the generated entry listed in `src/module.json.esmodules`.
 
 ### Where new functionality belongs
 
@@ -126,13 +126,37 @@ Keep system-specific assumptions and third-party integrations in dedicated files
 
 ## Lifecycle and public API
 
-`src/module.js` registers the lifecycle once. The initialization stage registers settings and helpers and exposes the public API through `game.modules.get(moduleId).api`.
+The public API is **`game.modules.get(MODULE_ID).api`**. In module source, import `MODULE_ID` from `src/scripts/constants.js`; in the browser console, use the id from your manifest.
 
-Foundry does not wait for promises returned by hook callbacks. The module therefore exposes its own readiness contract. Callers should use `await api.whenReady` or call an operation such as `api.open()` that handles readiness for them.
+`ModuleApi` exposes `id`, `title`, `version`, `ready`, `status`, `error`, `whenReady`, `open()`, `openSettings()`, `getStatus()`, and the canonical `socket` service. Both opening methods display the settings application.
 
-The demo window is an integration example rather than an automatic startup window. Closing and reopening it should not register another set of lifecycle hooks.
+`init` registers the client debug setting, API, and named query handlers. `setup` reads saved settings and configures logging. `ready` preloads the template, activates the socket service, exposes the runtime alias, and resolves `whenReady`. Foundry does not await hook promises, so integrations must observe this readiness contract.
 
-See [runtime behavior](wiki/runtime.md) for API details, permissions, lifecycle rules, and Foundry smoke tests.
+```js
+const api = game.modules.get(MODULE_ID).api;
+await api.whenReady;
+await api.openSettings();
+
+const socket = api.socket;
+const status = await socket.executeAsGM("getStatus", {}, { timeout: 5000 });
+console.log(status);
+```
+
+After readiness, while the service is active, the public convenience path is **`game.modules.get(MODULE_ID).socket`**. It refers to the same instance as `.api.socket`. The latter remains the canonical service path.
+
+Foundry also uses `module.socket` as a manifest boolean. The runtime alias is installed only when the field can be safely replaced without changing manifest serialization. The source manifest retains its boolean; verify `toObject(true)` and `toJSON()` in a real Foundry smoke test. An unsupported field shape fails initialization instead of overwriting an unknown accessor.
+
+### Native socket service
+
+`ModuleSocket` uses [Foundry's registered queries](https://foundryvtt.com/api/v14/variables/CONFIG.queries.html), [User.query and User.queryMany](https://foundryvtt.com/api/v14/classes/foundry.documents.User.html#query), and the [active GM selection](https://foundryvtt.com/api/v14/classes/foundry.documents.collections.Users.html#activeGM). It implements no additional RPC transport and needs no socketlib dependency or fallback.
+
+Register operations in `socket-handlers.js` using `register(action, handler, { authorize })`. Authorization defaults to GM callers. The included `getStatus` operation explicitly permits active users because it returns a read-only status snapshot. Handlers receive the canonical caller through core's query context; payload fields cannot replace that identity. The caller must also have Foundry's `QUERY_USER` permission.
+
+The service provides `executeAsUser`, `executeAsGM`, `executeForUsers`, `executeForEveryone`, and `executeForOthers`. Multi-user calls preserve core's `Map<User, PromiseSettledResult>`, including individual failures. Timeouts bound waiting; do not treat a timeout as cancellation or automatically retry a mutating action.
+
+Socketlib remains a maintained option for other projects, with [Foundry 14 compatibility listed by its maintainer](https://foundryvtt.com/packages/socketlib). Its [current README](https://github.com/farling42/foundryvtt-socketlib/blob/develop/README.md) recommends evaluating native queries for Foundry 14+. This template uses an original native service and does not copy socketlib implementation code.
+
+See [runtime behavior](wiki/runtime.md) for exact signatures, result handling, authorization, lifecycle rules, and multiplayer smoke tests.
 
 ### Optional libWrapper integration
 
@@ -178,7 +202,7 @@ EditorConfig uses the same indentation rules. Generated output, the npm lockfile
 
 Maintain [CHANGELOG.md](CHANGELOG.md) for module users. Record meaningful changes under `Unreleased`, grouped into `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, or `Security` as needed. Explain the user-visible result and include migration instructions when a change requires action.
 
-Before releasing, set the same unprefixed semantic version in `src/module.json` and `package.json`, then move the applicable entries into a dated heading such as `## [1.2.3] - 2026-11-19`, leaving `Unreleased` available for future work. Keep the newest version first. The release tag and changelog version must match those source versions exactly. A prerelease such as `1.2.3-beta.1` needs its own entry and must appear in both source version fields.
+Before releasing, set the same unprefixed semantic version in `src/module.json`, `package.json`, and `MODULE_VERSION` in `src/scripts/constants.js`, then move the applicable entries into a dated heading such as `## [1.2.3] - 2026-11-19`, leaving `Unreleased` available for future work. Keep the newest version first. The release tag and changelog version must match those source versions exactly. A prerelease such as `1.2.3-beta.1` needs its own entry and must appear in all three version fields.
 
 Release preparation reads the entry for the exact source version and refuses to publish changelog content from `Unreleased` or another version. The workflow includes that entry and the generated installation instructions in the release description while preserving maintainer text outside its managed sections. The packaged module also includes the changelog.
 
@@ -196,6 +220,7 @@ dist/
     lang/
     templates/
     assets/
+    wiki/
     LICENSE
     THIRD_PARTY_NOTICES.md
     README.md
@@ -241,11 +266,11 @@ For a release tagged `1.2.3`, the generated manifest uses:
 
 `download` identifies the archive for that exact release. Stable releases use the latest stable manifest as their update feed. Prereleases point to the manifest attached to their own tag; choosing another prerelease or the stable channel is an explicit installation decision.
 
-The publication workflows read the version automatically from `src/module.json` and require an exact match with `package.json.version`. Tags use that same unprefixed semantic version, such as `14.0.0` or `14.0.1-rc.1`. A leading `v` is rejected rather than removed.
+The publication workflows read the version automatically from `src/module.json` and require exact consistency with `package.json.version` and the literal `MODULE_VERSION`. Tags use that same unprefixed semantic version, such as `14.0.0` or `14.0.1-rc.1`. A leading `v` is rejected rather than removed.
 
 ### Create a release or prerelease
 
-Prepare both source version fields and the matching dated changelog entry in the revision you intend to publish. In GitHub Actions, choose **Create Release** when the source version is stable, such as `14.0.0`, or **Create Prerelease** when it has a suffix, such as `14.0.1-rc.1`. Select the source branch or tag and run the workflow. There is no version input; the selected workflow validates that the source version belongs to its channel.
+Prepare all three version fields and the matching dated changelog entry in the revision you intend to publish. In GitHub Actions, choose **Create Release** when the source version is stable, such as `14.0.0`, or **Create Prerelease** when it has a suffix, such as `14.0.1-rc.1`. Select the source branch or tag and run the workflow. There is no version input; the selected workflow validates that the source version belongs to its channel.
 
 The workflow checks and packages the exact selected commit before creating its tag. It then creates a draft release, uploads and verifies both assets, and publishes the completed release. No tag or release needs to exist before the first run. Existing tags must already point to the same commit; published releases cannot be replaced. A failed upload leaves a draft that can be resumed from the same source revision.
 
@@ -273,10 +298,10 @@ The mapping in [wiki/upstream.md](wiki/upstream.md) distinguishes preserved feat
 
 Run `npm run check` before a release. The behavioral tests cover initialization, optional wrapping, safe local tooling, release manifests, archive layout, and packaging failures.
 
-Build-time checks do not replace a Foundry runtime check. Test the module in a clean v14 world, open and close the example window repeatedly, exercise its settings, check localization and console errors, and verify the installed ZIP rather than only the source tree. Add multiplayer and permission tests when a feature starts modifying shared documents.
+Build-time checks do not replace a Foundry runtime check. Test the module in a clean v14 world, open and close the settings window repeatedly, exercise its settings, check localization and console errors, and verify the installed ZIP rather than only the source tree. Add multiplayer and permission tests when a feature starts modifying shared documents.
 
 ## Attribution
 
-This project adapts code and development conventions from **DFreds Module Template TS**, copyright 2025 Derek Fredrickson, under the MIT License. The optional libWrapper fallback retains the original attribution to Rui Pinheiro. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+This project adapts code and development conventions from **DFreds Module Template TS**, copyright 2025 Derek Fredrickson, under the MIT License. The optional libWrapper fallback retains the original attribution to Rui Pinheiro. Package metadata uses `license: "SEE LICENSE IN LICENSE"`; the actual license and notices remain in [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 The requested release asset names and folder layout follow the author's established packaging requirements. They are implemented independently for this JavaScript template.

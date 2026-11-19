@@ -21,13 +21,13 @@
       "path": "package.json",
       "gitBlobSha": "235bf38dc3ffa25ec2118efc8bf8cabc65f9e8bc",
       "localPaths": ["package.json", "package-lock.json"],
-      "decision": "Review tooling versions and Foundry types; keep JavaScript tooling and the local lockfile."
+      "decision": "Review tooling versions and keep JavaScript tooling with a local lockfile, module.js entry, and file-referenced license metadata."
     },
     {
       "path": "vite.config.ts",
       "gitBlobSha": "6fbb83f318758bb6014bf4167df05f3684fa6b42",
-      "localPaths": ["vite.config.js", "build/build.js"],
-      "decision": "Adapt the ES module build while omitting TypeScript-only path aliases and retaining the unified src layout and per-id output."
+      "localPaths": ["vite.config.js", "build/build.js", "build/identity.js"],
+      "decision": "Adapt the ES module build without TypeScript-only aliases; transform the language root structurally, inject Sass identity, and retain the unified src layout and per-id output."
     },
     {
       "path": "static/lib/shim.ts",
@@ -69,13 +69,13 @@
       "path": "src/ts/hooks/init.ts",
       "gitBlobSha": "b01c3b683b07373b7d528c35467bfaf021e96a39",
       "localPaths": ["src/scripts/hooks/init.js"],
-      "decision": "Register settings, Handlebars helpers, and the public module API during init."
+      "decision": "Register client settings, the ModuleApi instance, and named native-query handlers during init; no global Handlebars helper."
     },
     {
       "path": "src/ts/hooks/setup.ts",
       "gitBlobSha": "f1913bb62de66b682d81025f4dcac867fe706928",
       "localPaths": ["src/scripts/hooks/setup.js", "src/scripts/wrappers.js"],
-      "decision": "Keep setup integration explicit; the demonstration does not wrap unrelated core functionality by default."
+      "decision": "Read stored diagnostic settings and keep optional integration setup explicit; no core wrappers are registered by default."
     },
     {
       "path": "src/ts/hooks/hot-reload.ts",
@@ -87,7 +87,7 @@
       "path": "src/ts/settings.ts",
       "gitBlobSha": "1bc1f69620550f169ed3e5b0df3a940bb86b3549",
       "localPaths": ["src/scripts/settings.js"],
-      "decision": "Keep named settings registration and access in one JavaScript module."
+      "decision": "Keep named registration and access for the real client debug setting in one JavaScript module."
     },
     {
       "path": "src/ts/logger.ts",
@@ -98,26 +98,26 @@
     {
       "path": "src/ts/handlebar-helpers.ts",
       "gitBlobSha": "e68d9f1bcf5aa1241483dce5b1d6c755ad23c965",
-      "localPaths": ["src/scripts/handlebars.js"],
-      "decision": "Register namespaced template helpers to avoid collisions."
+      "localPaths": [],
+      "decision": "Intentionally omitted: localization keys are prepared in application context and templates use existing Foundry helpers; no custom global helper."
     },
     {
       "path": "src/ts/constants.ts",
       "gitBlobSha": "f259ae387a2af418a43a91d499e1f11a02280b47",
-      "localPaths": ["src/scripts/constants.js"],
-      "decision": "Derive the module id from src/module.json instead of a TypeScript static alias."
+      "localPaths": ["src/scripts/constants.js", "build/identity.js", "utils/check-source.js"],
+      "decision": "Keep literal MODULE_ID, MODULE_TITLE, and MODULE_VERSION exports validated against manifest/package metadata; derive paths and localization keys."
     },
     {
       "path": "src/ts/api.ts",
       "gitBlobSha": "d3ca635fa6e5fb42e7e2aab05531bae4f73bb2b9",
       "localPaths": ["src/scripts/api.js"],
-      "decision": "The upstream file contains only TypeScript interfaces; the local file is an independent runtime API, not a port of type aliases."
+      "decision": "The upstream file contains TypeScript interfaces; the local ModuleApi class and readiness/socket contract are independent runtime implementations."
     },
     {
       "path": "static/module.json",
       "gitBlobSha": "b81cbd3004fa0820818b69f0f82b2f08e2a77e1f",
-      "localPaths": ["src/module.json"],
-      "decision": "Keep one source manifest and lang paths; generate release URLs and leave verified unset until real runtime tests."
+      "localPaths": ["src/module.json", "build/identity.js", "utils/check-source.js"],
+      "decision": "Validate the source identity against package metadata and literal constants; preserve version and the boolean socket flag, generate release URLs, and leave verified unset until runtime tests."
     },
     {
       "path": "build/clean.ts",
@@ -135,7 +135,7 @@
       "path": "build/rename-module.ts",
       "gitBlobSha": "edd4c42b5def94719d6cc8b3c3d84b4ca10c6cdd",
       "localPaths": ["utils/rename.js"],
-      "decision": "Rename explicit project fields and namespaces without rewriting upstream provenance or unrelated files."
+      "decision": "Target only src/module.json, package.json, literal constants.js declarations, and generated package-lock root metadata; preserve other source, documentation, changelog history, and provenance."
     },
     {
       "path": "build/pack.ts",
@@ -202,6 +202,36 @@
     "Download URLs are pinned to the exact tag; stable manifests use the latest stable feed and prerelease manifests remain pinned to their own tags.",
     "Independent Node-based ZIP packaging and verification.",
     "No Git-history-derived release notes, pull-request workflows, scheduled checks, upstream bots, automatic merges, or Discord/Foundry website publication; release changes come from curated CHANGELOG entries.",
-    "Development uses rebuilding and documented reloads; it does not promise parity with every upstream HMR behavior."
+    "Development uses rebuilding and documented reloads; it does not promise parity with every upstream HMR behavior.",
+    "Identity uses three explicit authored files with literal runtime constants; paths, translation namespaces, and Sass scoping derive from their validated values.",
+    "The generic settings application controls real client debug logging; no sample feature toggle or custom global Handlebars helper is registered.",
+    "ModuleApi exposes readiness and a native ModuleSocket service; the guarded module.socket alias must preserve the core boolean manifest flag and be verified in a real Foundry build.",
+    "Release workflows have no version input: the source manifest, package, literal constant, and dated changelog must agree on strict unprefixed SemVer."
+  ],
+  "localAdditions": [
+    {
+      "localPaths": [
+        "src/scripts/api.js",
+        "src/scripts/module-registry.js",
+        "src/scripts/applications/module-settings.js",
+        "src/templates/module-settings.hbs"
+      ],
+      "decision": "Original ModuleApi readiness and status contract, reusable client-debug settings application, and guarded runtime socket alias preserving serialized manifest data."
+    },
+    {
+      "localPaths": ["src/scripts/socket.js", "src/scripts/socket-handlers.js"],
+      "decision": "Original native Foundry 14 query adapter with namespaced registration, canonical caller context, explicit authorization, QUERY_USER checks, and unchanged multi-user settled results. No socketlib implementation is copied or required.",
+      "references": [
+        "https://foundryvtt.com/api/v14/variables/CONFIG.queries.html",
+        "https://foundryvtt.com/api/v14/classes/foundry.documents.User.html#query",
+        "https://foundryvtt.com/api/v14/classes/foundry.documents.User.html#queryMany",
+        "https://foundryvtt.com/api/v14/classes/foundry.documents.collections.Users.html#activeGM",
+        "https://foundryvtt.com/api/v14/variables/CONST.USER_PERMISSIONS.html"
+      ]
+    },
+    {
+      "localPaths": ["build/identity.js", "utils/rename.js"],
+      "decision": "Original validation of the three authored identity files, structural language-root transformation, and targeted renaming with generated lockfile metadata."
+    }
   ]
 }

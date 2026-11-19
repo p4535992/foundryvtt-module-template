@@ -1,0 +1,26 @@
+<div class="module-settings">
+    <header class="module-settings__header">
+        <img class="module-settings__icon" src="{{ icon }}" alt="" width="56" height="56" />
+        <div>
+            <p class="module-settings__eyebrow">{{ moduleTitle }}</p>
+            <h2>{{localize labels.title}}</h2>
+        </div>
+    </header>
+
+    <p class="module-settings__description">{{localize labels.description}}</p>
+
+    <div class="module-settings__setting">
+        <span>{{localize labels.setting}}</span>
+        <strong>{{localize labels.status}}</strong>
+    </div>
+
+    <button type="button" data-action="toggleDebug" aria-pressed="{{ enabled }}">
+        <i class="fa-solid fa-bug" aria-hidden="true"></i>
+        {{localize labels.toggle}}
+    </button>
+
+    <footer class="module-settings__footer">
+        <span>{{localize labels.note}}</span>
+        <span>{{ version }}</span>
+    </footer>
+</div>

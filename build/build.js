@@ -3,6 +3,7 @@ import { watch } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { PROJECT_ROOT, getModuleDirectory, isMain, readManifest, reportError } from "./config.js";
+import { renderLanguageSource, validateProjectIdentity } from "./identity.js";
 import { cleanModuleDirectory, prepareModuleDirectory } from "../utils/clean.js";
 
 export const STATIC_DIRECTORIES = ["lang", "templates", "assets"];
@@ -17,7 +18,7 @@ async function lstat(file) {
   }
 }
 
-async function copyTree(source, destination) {
+async function copyTree(source, destination, readBytes) {
   const sourceStat = await lstat(source);
   const destinationStat = await lstat(destination);
   if (sourceStat?.isSymbolicLink() || destinationStat?.isSymbolicLink()) {
@@ -30,7 +31,8 @@ async function copyTree(source, destination) {
   if (sourceStat.isFile()) {
     if (destinationStat?.isDirectory()) await fs.rm(destination, { recursive: true });
     await fs.mkdir(path.dirname(destination), { recursive: true });
-    await fs.copyFile(source, destination);
+    if (readBytes) await fs.writeFile(destination, await readBytes(source));
+    else await fs.copyFile(source, destination);
     return;
   }
   if (!sourceStat.isDirectory()) throw new Error(`Unsupported static resource: ${source}`);
@@ -41,7 +43,15 @@ async function copyTree(source, destination) {
   for (const existing of await fs.readdir(destination)) {
     if (!wanted.has(existing)) await fs.rm(path.join(destination, existing), { recursive: true, force: true });
   }
-  for (const name of names) await copyTree(path.join(source, name), path.join(destination, name));
+  for (const name of names) await copyTree(path.join(source, name), path.join(destination, name), readBytes);
+}
+
+export async function readStaticResource(file, { sourceRoot = path.join(PROJECT_ROOT, "src"), moduleId } = {}) {
+  const bytes = await fs.readFile(file);
+  const relative = path.relative(sourceRoot, file).split(path.sep).join("/");
+  return relative.startsWith("lang/") && relative.endsWith(".json")
+    ? renderLanguageSource(bytes, { moduleId, filename: relative })
+    : bytes;
 }
 
 export function isStaticResource(file, sourceRoot = path.join(PROJECT_ROOT, "src")) {
@@ -63,7 +73,9 @@ export async function syncStaticResources({
   await fs.mkdir(targetRoot, { recursive: true });
   await copyTree(manifestFile, path.join(targetRoot, "module.json"));
   for (const directory of STATIC_DIRECTORIES) {
-    await copyTree(path.join(sourceRoot, directory), path.join(targetRoot, directory));
+    await copyTree(path.join(sourceRoot, directory), path.join(targetRoot, directory), (file) =>
+      readStaticResource(file, { sourceRoot, moduleId: manifest.id }),
+    );
   }
 }
 
@@ -136,6 +148,12 @@ export function createResourcesPlugin({
   return {
     name: "foundry-module-resources",
     async buildStart() {
+      const { manifest } = await validateProjectIdentity({ projectRoot });
+      if (manifest.id !== id) {
+        throw new Error(
+          "The module id changed. Stop the watcher, rebuild, and link the renamed module before restarting.",
+        );
+      }
       await prepareModuleDirectory({ outRoot, projectRoot });
     },
     async writeBundle() {
@@ -154,6 +172,9 @@ export function createResourcesPlugin({
       await stopWatching?.();
     },
     async configureServer(server) {
+      const { manifest } = await validateProjectIdentity({ projectRoot });
+      if (manifest.id !== id)
+        throw new Error("The module id changed. Restart hot mode after rebuilding and linking it.");
       await prepareModuleDirectory({ outRoot, projectRoot });
       if (!(await lstat(path.join(targetRoot, "module.js")))?.isFile()) {
         throw new Error("Build and link the module before starting hot mode: npm run dev, then npm run link.");
@@ -192,7 +213,7 @@ export function createResourcesPlugin({
           if (!fileStat?.isFile() || fileStat.isSymbolicLink()) return next();
           response.setHeader("Content-Type", CONTENT_TYPES[path.extname(file)] ?? "application/octet-stream");
           response.setHeader("Cache-Control", "no-store");
-          response.end(await fs.readFile(file));
+          response.end(await readStaticResource(file, { sourceRoot, moduleId: id }));
         } catch (error) {
           next(error);
         }
@@ -210,12 +231,18 @@ export function createResourcesPlugin({
   };
 }
 
-export async function runBuild({ outRoot = "dist", mode = "production", watchMode = false } = {}) {
+export async function runBuild({
+  projectRoot = PROJECT_ROOT,
+  outRoot = "dist",
+  mode = "production",
+  watchMode = false,
+} = {}) {
   if (!BUILD_MODES.has(mode)) throw new Error(`Unsupported build mode: ${mode}`);
+  await validateProjectIdentity({ projectRoot });
   // Import dependencies before cleaning a working build so a missing install is harmless.
   const [{ build }, { createModuleConfig }] = await Promise.all([import("vite"), import("../vite.config.js")]);
-  await cleanModuleDirectory({ outRoot, preservePacks: true });
-  const config = createModuleConfig({ command: "build", mode, outRoot, watchMode });
+  await cleanModuleDirectory({ projectRoot, outRoot, preservePacks: true });
+  const config = createModuleConfig({ projectRoot, command: "build", mode, outRoot, watchMode });
   const result = await build({ ...config, configFile: false, mode });
   if (watchMode && result && typeof result.close === "function") {
     for (const signal of ["SIGINT", "SIGTERM"]) {

@@ -14,14 +14,15 @@ This template keeps the useful development workflow from DFreds' module template
 | `src/templates/`         | Handlebars templates                               | `dist/<module-id>/templates/`                     |
 | `src/assets/`            | Images and other static assets                     | `dist/<module-id>/assets/`                        |
 | `packs-src/<pack-name>/` | Optional compendium source JSON                    | Compiled separately into the manifest's pack path |
-| `build/`                 | Node command-line tools                            | Excluded from the module                          |
+| `build/`                 | Build, identity, and release machinery             | Excluded from the module                          |
+| `utils/`                 | Developer commands                                 | Excluded from the module                          |
 | `wiki/`                  | Development and runtime documentation              | `dist/<module-id>/wiki/`                          |
 
-The build copies static resources explicitly. It does not expose the whole `src` directory as a public directory, and it does not copy JavaScript sources or pack source JSON into the distribution. README, CHANGELOG, and license notices are included.
+The build copies static resources explicitly. It transforms the `__MODULE_ID__` language root structurally and shares that transformation with watch mode and the hot proxy; it does not perform text replacement inside translation values. Vite injects the validated module id as Sass `$module-id`. It does not expose the whole `src` directory as a public directory, and it does not copy JavaScript sources or pack source JSON into the distribution. README, CHANGELOG, and license notices are included.
 
 Assets imported through JavaScript or styles are emitted under `scripts/generated-assets/`. This separate namespace keeps Vite-generated files safe when the static `assets/` directory is synchronized.
 
-Keep runtime imports relative and use the `.js` extension. Read shared module identity from `src/scripts/constants.js`. The module id is defined in `src/module.json`.
+Keep runtime imports relative and use the `.js` extension. Read runtime identity from the literal exports in `src/scripts/constants.js`. Keep `MODULE_ID`, `MODULE_TITLE`, and `MODULE_VERSION` consistent with `src/module.json` and `package.json`. `build/identity.js` validates that three-file contract before generating resources.
 
 ## Local setup
 
@@ -63,13 +64,15 @@ On Windows, the link command creates a directory junction. Running it again with
 Use explicit options; there is no interactive prompt:
 
 ```sh
-npm run rename-module -- --id my-module --title "My Module" --description "My Foundry module." --repository example/my-module --dry-run
-npm run rename-module -- --id my-module --title "My Module" --description "My Foundry module." --repository example/my-module
+npm run rename-module -- --id my-module --title "My Module" --version 14.0.0 --description "My Foundry module." --repository example/my-module --dry-run
+npm run rename-module -- --id my-module --title "My Module" --version 14.0.0 --description "My Foundry module." --repository example/my-module
 ```
 
 The module id must begin with a lowercase letter and use lowercase letters, numbers, and hyphens. `--repository` accepts `owner/repository` or a GitHub HTTPS URL. If omitted, existing repository URLs are retained.
 
-The command updates structured JSON and a defined set of text files, including module identity and repository references in `CHANGELOG.md`. Changelog version headings and dates are preserved. It updates translation namespaces, CSS prefixes, and JavaScript references to the old module id. It leaves `src/assets`, pack data, license notices, generated builds, and existing Foundry links untouched. Images are never processed as text. Review the changed files, rebuild, and link the new module id.
+The command targets exactly `src/module.json`, `package.json`, and `src/scripts/constants.js`, plus generated name/version/license metadata at the root of `package-lock.json`. `--version` synchronizes the three versions and version-specific release URLs. Each identity constant must have exactly one exported string-literal declaration; computed or missing declarations fail before files are written.
+
+Repository metadata changes only when `--repository` is supplied. The command preserves documentation, changelog history, upstream provenance, language source, styles, binary assets, pack data, and unrelated code. Language namespaces and CSS scoping follow the identity through the build. Review the three authored files and generated lock metadata, rebuild, and create the link for the new id. A release also needs its own manually curated changelog entry.
 
 ## Build modes
 
@@ -138,7 +141,7 @@ npm run pack -- --force
 
 These are separate operations for different directions of work; run the one that corresponds to the content you want to preserve. For a newly created pack, make its initial content in Foundry, close the world, and unpack it to create the source JSON.
 
-Both commands accept `--out-root` to target a different module build. Pack sources remain outside `src` and are excluded from the installed module.
+Use `--pack example` to select one declared pack by name; omitting it processes all declared packs. Both commands accept `--out-root` to target a different module build. Pack sources remain outside `src` and are excluded from the installed module.
 
 ## Verification
 
@@ -152,6 +155,6 @@ npm run verify:package
 
 The Node tests can run without installing the build dependencies. They exercise rename behavior with binary assets, cleanup ownership, symlink safety, resource watching, argument handling, and pack path/overwrite checks. Runtime tests verify module behavior using controlled Foundry substitutes. They do not replace a real Foundry smoke test.
 
-After dependencies are installed, verify that both development and production builds contain every manifest resource. In Foundry 14, open the sample application, change its setting, reload, and repeat as a player. Check that repeated open/close cycles do not add duplicate listeners. For hot mode, test a CSS change and a JavaScript change separately. If adding packs, perform a real CLI pack/unpack round trip with stable document ids before releasing content.
+After dependencies are installed, verify that both development and production builds contain every manifest resource. In Foundry 14, open the settings application, change the client debug setting, reload, and repeat as a player. Verify the API and socket paths, caller policies, per-user results, and runtime manifest serialization described in the runtime guide. Check that repeated open/close cycles do not add duplicate listeners. For hot mode, test a CSS change and a JavaScript change separately. If adding packs, perform a real CLI pack/unpack round trip with stable document ids before releasing content.
 
-Run `npm run release:prepare -- --version <version>` for isolated release preparation; see the README for release arguments and publishing instructions. Preparing files locally does not publish a release or notify an external service.
+Run `npm run release:prepare -- --repository your-account/example-module` for isolated preparation using the validated source version. The workflow has no manual version input; all three version fields and the dated changelog entry must agree. See [releasing](releasing.md) for publication instructions. Preparing files locally does not publish a release or notify an external service.

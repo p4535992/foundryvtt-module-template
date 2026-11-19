@@ -1,20 +1,40 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createApiController, moduleApi } from "../src/scripts/api.js";
+import { ModuleApi, moduleApi } from "../src/scripts/api.js";
 import { onInit } from "../src/scripts/hooks/init.js";
 import { onSetup } from "../src/scripts/hooks/setup.js";
+import { onReady } from "../src/scripts/hooks/ready.js";
+import { MODULE_ID, MODULE_PATH, MODULE_TITLE, translationKey } from "../src/scripts/constants.js";
+import { moduleSocket } from "../src/scripts/socket.js";
 import { getLibWrapper, LibWrapperFallback } from "../src/scripts/lib/libwrapper-shim.js";
 import { configureLogging, reportError } from "../src/scripts/logger.js";
 
-test("init registers settings without reading storage until setup", (t) => {
+function createApiController(openApplication) {
+  const api = new ModuleApi({ openApplication, socket: null });
+  return {
+    api,
+    markReady: () => api._markReady(),
+    fail: (error) => api._failInitialization(error),
+  };
+}
+
+test("lifecycle exposes the public API and active socket after services are ready", async (t) => {
   const previousGame = globalThis.game;
-  const previousHandlebars = globalThis.Handlebars;
+  const previousConfig = globalThis.CONFIG;
+  const previousFoundry = globalThis.foundry;
+  const previousHooks = globalThis.Hooks;
   let phase = "init";
   const registered = [];
   const reads = [];
-  const installedModule = {};
+  const loadedTemplates = [];
+  const emitted = [];
+  const source = { socket: true, version: "14.0.0" };
+  const installedModule = { ...source, toObject: () => ({ ...source }), toJSON: () => ({ ...source }) };
+  const user = { id: "current-user", active: true, isGM: false, can: () => true };
   globalThis.game = {
     modules: new Map([[moduleApi.id, installedModule]]),
+    user,
+    users: new Map([[user.id, user]]),
     settings: {
       register(namespace, key) {
         assert.equal(phase, "init");
@@ -27,23 +47,56 @@ test("init registers settings without reading storage until setup", (t) => {
       },
     },
   };
-  globalThis.Handlebars = { registerHelper() {} };
+  globalThis.CONFIG = { queries: {} };
+  globalThis.foundry = {
+    applications: { handlebars: { loadTemplates: async (templates) => loadedTemplates.push(...templates) } },
+  };
+  globalThis.Hooks = { callAll: (...args) => emitted.push(args) };
   t.after(() => {
+    moduleSocket.dispose();
     if (previousGame === undefined) delete globalThis.game;
     else globalThis.game = previousGame;
-    if (previousHandlebars === undefined) delete globalThis.Handlebars;
-    else globalThis.Handlebars = previousHandlebars;
+    if (previousConfig === undefined) delete globalThis.CONFIG;
+    else globalThis.CONFIG = previousConfig;
+    if (previousFoundry === undefined) delete globalThis.foundry;
+    else globalThis.foundry = previousFoundry;
+    if (previousHooks === undefined) delete globalThis.Hooks;
+    else globalThis.Hooks = previousHooks;
     configureLogging({ debug: false });
   });
 
   onInit();
   assert.equal(installedModule.api, moduleApi);
-  assert.equal(registered.length, 2);
+  assert.ok(installedModule.api instanceof ModuleApi);
+  assert.equal(registered.length, 1);
   assert.deepEqual(reads, []);
+  assert.equal(moduleApi.ready, false);
+  assert.equal(moduleApi.socket.active, false);
+  assert.equal(installedModule.socket, true);
+  assert.equal(typeof globalThis.CONFIG.queries[`${MODULE_ID}.getStatus`], "function");
 
   phase = "setup";
   onSetup();
   assert.deepEqual(reads, [{ namespace: moduleApi.id, key: "debug", phase: "setup" }]);
+
+  phase = "ready";
+  await onReady();
+  assert.equal(await moduleApi.whenReady, moduleApi);
+  assert.equal(installedModule.socket, moduleApi.socket);
+  assert.equal(installedModule.socket.active, true);
+  assert.equal(installedModule.toObject(true).socket, true);
+  assert.deepEqual(loadedTemplates, [`${MODULE_PATH}/templates/module-settings.hbs`]);
+  assert.deepEqual(emitted, [[`${MODULE_ID}.ready`, moduleApi]]);
+  const status = await globalThis.CONFIG.queries[`${MODULE_ID}.getStatus`]({}, { user });
+  assert.deepEqual(status, {
+    id: MODULE_ID,
+    title: MODULE_TITLE,
+    version: "14.0.0",
+    ready: true,
+    status: "ready",
+    socketActive: true,
+    socketProvider: "foundry",
+  });
 });
 
 test("the public API waits for initialization and coalesces simultaneous opens", async () => {
@@ -53,7 +106,7 @@ test("the public API waits for initialization and coalesces simultaneous opens",
   const started = new Promise((resolve) => {
     signalStarted = resolve;
   });
-  const application = { id: "demo" };
+  const application = { id: "settings" };
   const controller = createApiController(() => {
     openCount += 1;
     signalStarted();
@@ -63,7 +116,7 @@ test("the public API waits for initialization and coalesces simultaneous opens",
   });
 
   const first = controller.api.open();
-  const second = controller.api.open();
+  const second = controller.api.openSettings();
   await Promise.resolve();
   assert.equal(openCount, 0);
   assert.equal(controller.api.ready, false);
@@ -149,7 +202,7 @@ test("a window-opening failure can be retried without corrupting readiness", asy
   assert.equal(controller.api.ready, true);
 });
 
-test("the public API reports the installed package version after release stamping", (t) => {
+test("the public API reports the installed package version", (t) => {
   const previous = globalThis.game;
   const controller = createApiController(() => {});
   globalThis.game = {
@@ -160,6 +213,68 @@ test("the public API reports the installed package version after release stampin
     else globalThis.game = previous;
   });
   assert.equal(controller.api.version, "2.3.4");
+});
+
+test("the settings application manages the real client debug setting", async (t) => {
+  const previousGame = globalThis.game;
+  const previousFoundry = globalThis.foundry;
+  let debug = false;
+  const writes = [];
+  const renders = [];
+  class ApplicationV2 {
+    async _prepareContext() {
+      return { inherited: true };
+    }
+    async render(options) {
+      renders.push(options);
+      return this;
+    }
+  }
+  globalThis.foundry = {
+    applications: { api: { ApplicationV2, HandlebarsApplicationMixin: (Base) => class extends Base {} } },
+  };
+  globalThis.game = {
+    modules: new Map([[MODULE_ID, { version: "14.0.0" }]]),
+    settings: {
+      get(namespace, key) {
+        assert.equal(namespace, MODULE_ID);
+        assert.equal(key, "debug");
+        return debug;
+      },
+      async set(namespace, key, value) {
+        writes.push({ namespace, key, value });
+        debug = value;
+        return value;
+      },
+    },
+  };
+  t.after(() => {
+    if (previousGame === undefined) delete globalThis.game;
+    else globalThis.game = previousGame;
+    if (previousFoundry === undefined) delete globalThis.foundry;
+    else globalThis.foundry = previousFoundry;
+  });
+
+  const { ModuleSettingsApplication } = await import("../src/scripts/applications/module-settings.js");
+  const application = new ModuleSettingsApplication();
+  const context = await application._prepareContext({});
+  assert.equal(context.inherited, true);
+  assert.equal(context.moduleTitle, MODULE_TITLE);
+  assert.equal(context.enabled, false);
+  assert.equal(context.labels.toggle, translationKey("Application.EnableDebug"));
+  assert.equal(ModuleSettingsApplication.DEFAULT_OPTIONS.id, `${MODULE_ID}-settings`);
+  assert.equal(ModuleSettingsApplication.PARTS.content.template, `${MODULE_PATH}/templates/module-settings.hbs`);
+
+  let prevented = false;
+  const button = { disabled: false };
+  await ModuleSettingsApplication.toggleDebug.call(application, { preventDefault: () => (prevented = true) }, button);
+  assert.equal(prevented, true);
+  assert.equal(button.disabled, false);
+  assert.deepEqual(writes, [{ namespace: MODULE_ID, key: "debug", value: true }]);
+  assert.deepEqual(renders, [{ force: false }]);
+  const refreshed = await application._prepareContext({});
+  assert.equal(refreshed.enabled, true);
+  assert.equal(refreshed.labels.toggle, translationKey("Application.DisableDebug"));
 });
 
 test("the fallback preserves method context, arguments, return values, and an inherited method", (t) => {

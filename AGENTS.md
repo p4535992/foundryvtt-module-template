@@ -4,16 +4,21 @@
 
 - Keep runtime sources in JavaScript ES modules. Do not introduce TypeScript source, a TypeScript build step, or type-only runtime imports.
 - Preserve `src/module.json`, `src/module.js`, and the `lang`, `styles`, `templates`, `assets`, and `scripts` directories beneath `src`.
-- Read the module identity from `src/module.json` rather than duplicating it in build or runtime code.
+- Keep authored identity changes confined to `src/module.json`, `package.json`, and `src/scripts/constants.js`. Use literal exported MODULE_ID, MODULE_TITLE, and MODULE_VERSION values; validate their equality with the JSON metadata and derive paths and keys from them.
+- Author translations under the `__MODULE_ID__` root and transform it structurally in build, watch, and hot mode. Inject Sass `$module-id`; do not rewrite language values, styles, or arbitrary source during a rename.
+- Keep application classes and template filenames generic. Use ModuleSettingsApplication and the real client debug setting; do not add a placeholder feature toggle or global Handlebars helper.
 - Keep lifecycle handlers small and make asynchronous readiness explicit.
 - Keep libWrapper optional. Do not enable demonstration patches in a fresh starter.
 - Use English for documentation, comments, workflow labels, and source translations.
 - Keep versioned documentation in `wiki/` and developer commands in `utils/`. Keep Vite build and release machinery in `build/`.
-- Keep package and source-manifest versions synchronized; the initial project version is `14.0.0`.
+- Keep package, source-manifest, and literal constant versions synchronized; the initial project version is `14.0.0`.
+- Preserve the ModuleApi readiness contract and public paths `game.modules.get(MODULE_ID).api` and, after readiness, `game.modules.get(MODULE_ID).socket`. The canonical service is `.api.socket`.
+- Guard the runtime socket alias and preserve the boolean core manifest flag in source and serialization. Never overwrite an unknown accessor; record a real Foundry smoke test before claiming compatibility.
+- Use the original ModuleSocket over native Foundry 14 queries, with no socketlib dependency or fallback. Registered actions default to GM caller authorization; broader access must be explicit. Use core caller context, QUERY_USER permission checks, JSON payloads/results, and unchanged per-user settled results. Do not infer cancellation from timeouts or automatically retry mutations.
 
 ## Build and release
 
-- Read the release version automatically from `src/module.json`; manual workflows must not ask for a version. Require exact equality with `package.json.version` and a dated changelog entry for that version.
+- Read the release version automatically from `src/module.json`; manual workflows must not ask for a version. Require exact equality with `package.json.version`, literal `MODULE_VERSION`, and a dated changelog entry for that version.
 - Use strict, unprefixed semantic versions for source metadata and release tags, such as `14.0.0` or `14.0.1-rc.1`. Reject a leading `v`; the stable and prerelease workflows must enforce their respective suffix rules.
 - Produce the installable module under `dist/<module-id>/`.
 - Release preparation must use a separate clean staging directory and protect live development compendium data.
@@ -25,7 +30,7 @@
 - The manifest inside the archive and the separately attached manifest must be byte-identical.
 - Generate the English installation section from `.github/RELEASE_TEMPLATE.md`.
 - Maintain human-written, English changelog entries in `CHANGELOG.md`. Keep unreleased work under `Unreleased`; release preparation must use the dated entry matching the source version.
-- Preserve upstream license and attribution notices in the repository and distribution.
+- Preserve upstream license and attribution notices in the repository and distribution. Package metadata uses `main: "module.js"` and `license: "SEE LICENSE IN LICENSE"`; the actual license files remain authoritative.
 
 ## Maintenance
 
