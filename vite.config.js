@@ -3,7 +3,12 @@ import { defineConfig } from "vite";
 import { PROJECT_ROOT, getModuleDirectory, readFoundryConfig, readManifest } from "./build/config.js";
 import { createResourcesPlugin } from "./build/build.js";
 
-export function createModuleConfig({ command = "build", mode = "production", outRoot = "dist", watchMode = false } = {}) {
+export function createModuleConfig({
+  command = "build",
+  mode = "production",
+  outRoot = "dist",
+  watchMode = false,
+} = {}) {
   const { id } = readManifest();
   const local = command === "serve" ? readFoundryConfig({ optional: true }) : {};
   const moduleBase = `/modules/${id}/`;
@@ -37,13 +42,17 @@ export function createModuleConfig({ command = "build", mode = "production", out
           chunkFileNames: "scripts/chunks/[name]-[hash].js",
           assetFileNames(asset) {
             const names = asset.names ?? [asset.name ?? ""];
-            return names.some((name) => name.endsWith(".css")) ? "styles/module.css" : "scripts/generated-assets/[name]-[hash][extname]";
+            return names.some((name) => name.endsWith(".css"))
+              ? "styles/module.css"
+              : "scripts/generated-assets/[name]-[hash][extname]";
           },
-          minify: compact ? {
-            compress: { keepNames: { class: true, function: true } },
-            mangle: false,
-            codegen: { removeWhitespace: true },
-          } : false,
+          minify: compact
+            ? {
+                compress: { keepNames: { class: true, function: true } },
+                mangle: false,
+                codegen: { removeWhitespace: true },
+              }
+            : false,
         },
       },
     },

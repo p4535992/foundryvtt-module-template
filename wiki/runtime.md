@@ -7,23 +7,23 @@ libWrapper module for the default demo.
 
 ## Source layout
 
-| Path | Responsibility |
-| --- | --- |
-| `src/module.json` | Source package manifest; the single source of the module ID, title, and version |
-| `src/module.js` | Stylesheet import and one call to register lifecycle hooks |
-| `src/scripts/constants.js` | Manifest-derived IDs, asset paths, and localization keys |
-| `src/scripts/hooks/` | Foundry `init`, `setup`, and `ready` handlers |
-| `src/scripts/api.js` | Public API, initialization outcome, and window-opening coordination |
-| `src/scripts/settings.js` | Setting registration and access |
-| `src/scripts/logger.js` | Module-prefixed logging and user-facing error reporting |
-| `src/scripts/handlebars.js` | Namespaced Handlebars helper registration |
-| `src/scripts/applications/` | Foundry application classes |
-| `src/scripts/wrappers.js` | Optional integration registrations; empty by default |
-| `src/scripts/lib/libwrapper-shim.js` | Attributed, limited libWrapper fallback |
-| `src/lang/` | Localization JSON, starting with `en.json` |
-| `src/templates/` | Handlebars templates |
-| `src/styles/` | Source styles, scoped to the module's application class |
-| `src/assets/` | Static assets, including the original SVG demo icon |
+| Path                                 | Responsibility                                                                  |
+| ------------------------------------ | ------------------------------------------------------------------------------- |
+| `src/module.json`                    | Source package manifest; the single source of the module ID, title, and version |
+| `src/module.js`                      | Stylesheet import and one call to register lifecycle hooks                      |
+| `src/scripts/constants.js`           | Manifest-derived IDs, asset paths, and localization keys                        |
+| `src/scripts/hooks/`                 | Foundry `init`, `setup`, and `ready` handlers                                   |
+| `src/scripts/api.js`                 | Public API, initialization outcome, and window-opening coordination             |
+| `src/scripts/settings.js`            | Setting registration and access                                                 |
+| `src/scripts/logger.js`              | Module-prefixed logging and user-facing error reporting                         |
+| `src/scripts/handlebars.js`          | Namespaced Handlebars helper registration                                       |
+| `src/scripts/applications/`          | Foundry application classes                                                     |
+| `src/scripts/wrappers.js`            | Optional integration registrations; empty by default                            |
+| `src/scripts/lib/libwrapper-shim.js` | Attributed, limited libWrapper fallback                                         |
+| `src/lang/`                          | Localization JSON, starting with `en.json`                                      |
+| `src/templates/`                     | Handlebars templates                                                            |
+| `src/styles/`                        | Source styles, scoped to the module's application class                         |
+| `src/assets/`                        | Static assets, including the original SVG demo icon                             |
 
 Keep ordinary module logic under `src/scripts`. Introduce a dedicated service when
 it has a clear responsibility and callers. Pass dependencies explicitly when that
@@ -37,11 +37,11 @@ synchronous registration. `ready` awaits template loading before marking the
 module ready. Foundry's hook dispatcher does not wait for this module's async work,
 so consumers must use the API's readiness promise when they depend on that work.
 
-| Stage | Work |
-| --- | --- |
-| `init` | Attach the API to the module, register client settings and the helper |
+| Stage   | Work                                                                                           |
+| ------- | ---------------------------------------------------------------------------------------------- |
+| `init`  | Attach the API to the module, register client settings and the helper                          |
 | `setup` | Read persisted settings to configure logging, then register any explicitly configured wrappers |
-| `ready` | Load the demo template, resolve module readiness, emit the namespaced ready hook |
+| `ready` | Load the demo template, resolve module readiness, emit the namespaced ready hook               |
 
 After `init`, the API is available at:
 
@@ -59,23 +59,23 @@ own `ready` handler or listen for the custom hook:
 
 ```js
 Hooks.once("foundryvtt-module-template.ready", async (api) => {
-  try {
-    await api.open();
-  } catch (error) {
-    console.error("Could not open the module demo", error);
-  }
+    try {
+        await api.open();
+    } catch (error) {
+        console.error("Could not open the module demo", error);
+    }
 });
 ```
 
-| API member | Contract |
-| --- | --- |
-| `id` | Module ID from the source manifest |
-| `version` | Version from the installed package manifest, with the source version as a development fallback |
-| `ready` | `true` only after this module finishes initialization successfully |
-| `status` | `initializing`, `ready`, or `failed` |
-| `error` | Initialization error, or `null` |
-| `whenReady` | Promise resolving to the API, or rejecting if initialization fails |
-| `open()` | Promise resolving to the rendered demo application |
+| API member  | Contract                                                                                       |
+| ----------- | ---------------------------------------------------------------------------------------------- |
+| `id`        | Module ID from the source manifest                                                             |
+| `version`   | Version from the installed package manifest, with the source version as a development fallback |
+| `ready`     | `true` only after this module finishes initialization successfully                             |
+| `status`    | `initializing`, `ready`, or `failed`                                                           |
+| `error`     | Initialization error, or `null`                                                                |
+| `whenReady` | Promise resolving to the API, or rejecting if initialization fails                             |
+| `open()`    | Promise resolving to the rendered demo application                                             |
 
 The API object is frozen; its getters reflect current state. Simultaneous `open()`
 calls share the same in-flight operation and application instance. If rendering

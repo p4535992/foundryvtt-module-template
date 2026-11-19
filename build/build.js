@@ -50,7 +50,11 @@ export function isStaticResource(file, sourceRoot = path.join(PROJECT_ROOT, "src
   return relative === "module.json" || STATIC_DIRECTORIES.includes(relative.split(path.sep)[0]);
 }
 
-export async function syncStaticResources({ sourceRoot = path.join(PROJECT_ROOT, "src"), targetRoot = getModuleDirectory(), expectedId } = {}) {
+export async function syncStaticResources({
+  sourceRoot = path.join(PROJECT_ROOT, "src"),
+  targetRoot = getModuleDirectory(),
+  expectedId,
+} = {}) {
   const manifestFile = path.join(sourceRoot, "module.json");
   const manifest = JSON.parse(await fs.readFile(manifestFile, "utf8"));
   if (expectedId && manifest.id !== expectedId) {
@@ -63,7 +67,14 @@ export async function syncStaticResources({ sourceRoot = path.join(PROJECT_ROOT,
   }
 }
 
-export function watchStaticResources({ sourceRoot, targetRoot, expectedId, onChange = () => {}, onError = reportError, debounce = 50 }) {
+export function watchStaticResources({
+  sourceRoot,
+  targetRoot,
+  expectedId,
+  onChange = () => {},
+  onError = reportError,
+  debounce = 50,
+}) {
   let timer;
   let closed = false;
   let queue = Promise.resolve();
@@ -72,11 +83,13 @@ export function watchStaticResources({ sourceRoot, targetRoot, expectedId, onCha
     clearTimeout(timer);
     timer = setTimeout(() => {
       if (closed) return;
-      queue = queue.then(async () => {
-        if (closed) return;
-        await syncStaticResources({ sourceRoot, targetRoot, expectedId });
-        await onChange();
-      }).catch(onError);
+      queue = queue
+        .then(async () => {
+          if (closed) return;
+          await syncStaticResources({ sourceRoot, targetRoot, expectedId });
+          await onChange();
+        })
+        .catch(onError);
     }, debounce);
   });
   watcher.on("error", onError);
@@ -89,14 +102,32 @@ export function watchStaticResources({ sourceRoot, targetRoot, expectedId, onCha
 }
 
 const CONTENT_TYPES = {
-  ".json": "application/json", ".hbs": "text/plain; charset=utf-8", ".html": "text/html; charset=utf-8",
-  ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-  ".webp": "image/webp", ".gif": "image/gif", ".avif": "image/avif", ".woff": "font/woff",
-  ".woff2": "font/woff2", ".ttf": "font/ttf", ".ogg": "audio/ogg", ".mp3": "audio/mpeg",
-  ".mp4": "video/mp4", ".webm": "video/webm", ".css": "text/css; charset=utf-8",
+  ".json": "application/json",
+  ".hbs": "text/plain; charset=utf-8",
+  ".html": "text/html; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".avif": "image/avif",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".ogg": "audio/ogg",
+  ".mp3": "audio/mpeg",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".css": "text/css; charset=utf-8",
 };
 
-export function createResourcesPlugin({ projectRoot = PROJECT_ROOT, outRoot = "dist", mode = "production", watchMode = false }) {
+export function createResourcesPlugin({
+  projectRoot = PROJECT_ROOT,
+  outRoot = "dist",
+  mode = "production",
+  watchMode = false,
+}) {
   const { id } = readManifest(projectRoot);
   const sourceRoot = path.join(projectRoot, "src");
   const targetRoot = getModuleDirectory(outRoot, projectRoot);
@@ -129,11 +160,15 @@ export function createResourcesPlugin({ projectRoot = PROJECT_ROOT, outRoot = "d
       }
       await syncStaticResources({ sourceRoot, targetRoot, expectedId: id });
       stopWatching = watchStaticResources({
-        sourceRoot, targetRoot, expectedId: id,
+        sourceRoot,
+        targetRoot,
+        expectedId: id,
         onChange: () => server.ws.send({ type: "full-reload" }),
         onError: (error) => server.config.logger.error(error.message),
       });
-      server.httpServer?.once("close", () => { void stopWatching?.(); });
+      server.httpServer?.once("close", () => {
+        void stopWatching?.();
+      });
       server.middlewares.use(async (request, response, next) => {
         try {
           const pathname = decodeURIComponent(new URL(request.url, "http://localhost").pathname);
@@ -141,7 +176,9 @@ export function createResourcesPlugin({ projectRoot = PROJECT_ROOT, outRoot = "d
           const relative = pathname.slice(moduleBase.length);
           if (relative === "module.js") {
             response.setHeader("Content-Type", "text/javascript; charset=utf-8");
-            response.end(`import ${JSON.stringify(`${moduleBase}@vite/client`)};\nimport ${JSON.stringify(`${moduleBase}src/module.js`)};\n`);
+            response.end(
+              `import ${JSON.stringify(`${moduleBase}@vite/client`)};\nimport ${JSON.stringify(`${moduleBase}src/module.js`)};\n`,
+            );
             return;
           }
           if (relative === "styles/module.css") {
@@ -182,7 +219,9 @@ export async function runBuild({ outRoot = "dist", mode = "production", watchMod
   const result = await build({ ...config, configFile: false, mode });
   if (watchMode && result && typeof result.close === "function") {
     for (const signal of ["SIGINT", "SIGTERM"]) {
-      process.once(signal, () => { void result.close().catch(reportError); });
+      process.once(signal, () => {
+        void result.close().catch(reportError);
+      });
     }
     console.log("Watching JavaScript, styles, translations, templates, and assets. Reload Foundry after changes.");
   }
@@ -190,12 +229,15 @@ export async function runBuild({ outRoot = "dist", mode = "production", watchMod
 }
 
 async function main() {
-  const { values } = parseArgs({ options: {
-    "out-root": { type: "string", default: "dist" },
-    mode: { type: "string", default: "production" },
-    watch: { type: "boolean", default: false },
-  } });
+  const { values } = parseArgs({
+    options: {
+      "out-root": { type: "string", default: "dist" },
+      mode: { type: "string", default: "production" },
+      watch: { type: "boolean", default: false },
+    },
+  });
   await runBuild({ outRoot: values["out-root"], mode: values.mode, watchMode: values.watch });
 }
 
-if (isMain(import.meta.url)) await main().catch(reportError);
+// Complete module evaluation before loading vite.config.js, which imports this plugin.
+if (isMain(import.meta.url)) void main().catch(reportError);

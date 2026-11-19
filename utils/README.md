@@ -4,15 +4,15 @@ This directory contains the original JavaScript utilities used to maintain the m
 
 Prefer the npm aliases so the command interface remains independent of file placement:
 
-| File | Command | Purpose |
-| --- | --- | --- |
-| clean.js | `npm run clean` | Clean marked module output while preserving live compendiums |
-| packs.js | `npm run pack` / `npm run unpack` | Compile or extract declared compendiums |
-| link.js | `npm run link` | Link the built module to the configured Foundry Data directory |
-| foundry.js | `npm run foundry -- --version 14` | Start the selected local Foundry installation |
-| rename.js | `npm run rename-module -- --help` | Change the module identity and repository references |
-| upstream.js | `npm run upstream:check` | Explicitly compare the reviewed upstream source files |
-| check-source.js | `npm run lint:json` | Validate JSON, matching package/module versions, translations, and the source contract |
+| File            | Command                           | Purpose                                                                                |
+| --------------- | --------------------------------- | -------------------------------------------------------------------------------------- |
+| clean.js        | `npm run clean`                   | Clean marked module output while preserving live compendiums                           |
+| packs.js        | `npm run pack` / `npm run unpack` | Compile or extract declared compendiums                                                |
+| link.js         | `npm run link`                    | Link the built module to the configured Foundry Data directory                         |
+| foundry.js      | `npm run foundry -- --version 14` | Start the selected local Foundry installation                                          |
+| rename.js       | `npm run rename-module -- --help` | Change the module identity and repository references                                   |
+| upstream.js     | `npm run upstream:check`          | Explicitly compare the reviewed upstream source files                                  |
+| check-source.js | `npm run lint:json`               | Validate JSON, matching package/module versions, translations, and the source contract |
 
 ## Work with one compendium
 

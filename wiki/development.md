@@ -4,18 +4,18 @@ This template keeps the useful development workflow from DFreds' module template
 
 ## Project layout
 
-| Source | Purpose | Built location |
-| --- | --- | --- |
-| `src/module.json` | Module identity, compatibility, and resource paths | `dist/<module-id>/module.json` |
-| `src/module.js` | Runtime entry point | `dist/<module-id>/module.js` |
-| `src/scripts/` | Hooks, settings, API, UI, and integrations | Bundled into the entry or generated chunks |
-| `src/styles/module.scss` | Module styles | `dist/<module-id>/styles/module.css` |
-| `src/lang/` | Translation JSON | `dist/<module-id>/lang/` |
-| `src/templates/` | Handlebars templates | `dist/<module-id>/templates/` |
-| `src/assets/` | Images and other static assets | `dist/<module-id>/assets/` |
-| `packs-src/<pack-name>/` | Optional compendium source JSON | Compiled separately into the manifest's pack path |
-| `build/` | Node command-line tools | Excluded from the module |
-| `wiki/` | Development and runtime documentation | `dist/<module-id>/wiki/` |
+| Source                   | Purpose                                            | Built location                                    |
+| ------------------------ | -------------------------------------------------- | ------------------------------------------------- |
+| `src/module.json`        | Module identity, compatibility, and resource paths | `dist/<module-id>/module.json`                    |
+| `src/module.js`          | Runtime entry point                                | `dist/<module-id>/module.js`                      |
+| `src/scripts/`           | Hooks, settings, API, UI, and integrations         | Bundled into the entry or generated chunks        |
+| `src/styles/module.scss` | Module styles                                      | `dist/<module-id>/styles/module.css`              |
+| `src/lang/`              | Translation JSON                                   | `dist/<module-id>/lang/`                          |
+| `src/templates/`         | Handlebars templates                               | `dist/<module-id>/templates/`                     |
+| `src/assets/`            | Images and other static assets                     | `dist/<module-id>/assets/`                        |
+| `packs-src/<pack-name>/` | Optional compendium source JSON                    | Compiled separately into the manifest's pack path |
+| `build/`                 | Node command-line tools                            | Excluded from the module                          |
+| `wiki/`                  | Development and runtime documentation              | `dist/<module-id>/wiki/`                          |
 
 The build copies static resources explicitly. It does not expose the whole `src` directory as a public directory, and it does not copy JavaScript sources or pack source JSON into the distribution. README, CHANGELOG, and license notices are included.
 
@@ -31,16 +31,16 @@ Set `dataPath` to the **Data directory**, such as `/home/example/FoundryVTT/Data
 
 ```json
 {
-  "dataPath": "/home/example/FoundryVTT/Data",
-  "foundryUrl": "http://127.0.0.1:30000",
-  "vitePort": 30001,
-  "defaultVersion": "14",
-  "versions": {
-    "14": {
-      "entry": "/home/example/foundryvtt-14/main.js",
-      "args": []
+    "dataPath": "/home/example/FoundryVTT/Data",
+    "foundryUrl": "http://127.0.0.1:30000",
+    "vitePort": 30001,
+    "defaultVersion": "14",
+    "versions": {
+        "14": {
+            "entry": "/home/example/foundryvtt-14/main.js",
+            "args": []
+        }
     }
-  }
 }
 ```
 
@@ -73,14 +73,14 @@ The command updates structured JSON and a defined set of text files, including m
 
 ## Build modes
 
-| Command | Behavior |
-| --- | --- |
-| `npm run dev` | One development build, source maps, readable JavaScript, and a development lock file |
+| Command         | Behavior                                                                                    |
+| --------------- | ------------------------------------------------------------------------------------------- |
+| `npm run dev`   | One development build, source maps, readable JavaScript, and a development lock file        |
 | `npm run watch` | Development build followed by JavaScript/style rebuilds and static-resource synchronization |
-| `npm run hot` | Local Vite proxy, CSS hot updates, and full-page reloads for runtime/static changes |
-| `npm run stage` | Compact local build with the development lock retained |
-| `npm run build` | Compact production build without the development lock |
-| `npm run clean` | Remove generated files for this module while preserving live compendium packs |
+| `npm run hot`   | Local Vite proxy, CSS hot updates, and full-page reloads for runtime/static changes         |
+| `npm run stage` | Compact local build with the development lock retained                                      |
+| `npm run build` | Compact production build without the development lock                                       |
+| `npm run clean` | Remove generated files for this module while preserving live compendium packs               |
 
 `BUILD_MODE` is an explicit compile-time constant. Do not infer the configured build mode from `import.meta.env.DEV`: Vite's `--mode development` and `NODE_ENV` are separate settings.
 

@@ -6,11 +6,15 @@ import { getFoundryDataDirectory, isMain, readFoundryConfig, reportError } from 
 
 export function createFoundryLaunch(config, version = config.defaultVersion ?? "14") {
   const profile = config.versions?.[version];
-  if (!profile || typeof profile !== "object") throw new Error(`Foundry version ${version} is not configured in foundryconfig.json.`);
+  if (!profile || typeof profile !== "object")
+    throw new Error(`Foundry version ${version} is not configured in foundryconfig.json.`);
   const dataDirectory = getFoundryDataDirectory({ ...config, dataPath: profile.dataPath ?? config.dataPath });
   const executable = profile.executable || process.execPath;
   if (typeof executable !== "string") throw new Error("The Foundry executable must be a string.");
-  if ((executable.includes("/") || executable.includes("\\")) && !fs.statSync(executable, { throwIfNoEntry: false })?.isFile()) {
+  if (
+    (executable.includes("/") || executable.includes("\\")) &&
+    !fs.statSync(executable, { throwIfNoEntry: false })?.isFile()
+  ) {
     throw new Error(`Configured executable does not exist: ${executable}`);
   }
   const args = [];
@@ -45,8 +49,14 @@ export function startFoundry(config, version) {
     };
     process.on("SIGINT", forwardInterrupt);
     process.on("SIGTERM", forwardTermination);
-    child.once("error", (error) => { cleanup(); reject(error); });
-    child.once("exit", (code, signal) => { cleanup(); resolve(code ?? (signal ? 1 : 0)); });
+    child.once("error", (error) => {
+      cleanup();
+      reject(error);
+    });
+    child.once("exit", (code, signal) => {
+      cleanup();
+      resolve(code ?? (signal ? 1 : 0));
+    });
   });
 }
 

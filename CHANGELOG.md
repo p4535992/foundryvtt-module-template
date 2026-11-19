@@ -4,6 +4,8 @@ Notable changes to this template are recorded here. Entries are curated by maint
 
 ## [Unreleased]
 
+## [14.0.0] - 2026-11-19
+
 ### Added
 
 - JavaScript and Vite foundation with a unified src/ directory for the manifest, entry point, translations, styles, templates, assets, and scripts.

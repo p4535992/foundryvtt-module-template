@@ -5,12 +5,24 @@ import { parseArgs } from "node:util";
 import { PROJECT_ROOT, isMain, readManifest, reportError } from "../build/config.js";
 
 const TEXT_EXTENSIONS = new Set([".js", ".json", ".css", ".scss", ".hbs", ".html", ".md", ".txt"]);
-const ROOT_FILES = ["package.json", "package-lock.json", "README.md", "CHANGELOG.md", "vite.config.js", "eslint.config.js", "jsconfig.json", "foundryconfig.example.json", ".gitignore"];
+const ROOT_FILES = [
+  "package.json",
+  "package-lock.json",
+  "README.md",
+  "CHANGELOG.md",
+  "vite.config.js",
+  "eslint.config.js",
+  "jsconfig.json",
+  "foundryconfig.example.json",
+  ".gitignore",
+];
 
 function repositoryUrl(value) {
   if (typeof value !== "string" || !value.trim()) throw new Error("--repository must not be empty.");
   const input = value.trim();
-  const normalized = (input.startsWith("https://") ? input : `https://github.com/${input}`).replace(/\.git\/?$/, "").replace(/\/$/, "");
+  const normalized = (input.startsWith("https://") ? input : `https://github.com/${input}`)
+    .replace(/\.git\/?$/, "")
+    .replace(/\/$/, "");
   if (!/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(normalized)) {
     throw new Error("--repository must be owner/repository or an https://github.com/owner/repository URL.");
   }
@@ -21,8 +33,12 @@ async function candidates(projectRoot) {
   const result = [];
   async function visit(directory) {
     let entries;
-    try { entries = await fs.readdir(directory, { withFileTypes: true }); }
-    catch (error) { if (error.code === "ENOENT") return; throw error; }
+    try {
+      entries = await fs.readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      if (error.code === "ENOENT") return;
+      throw error;
+    }
     for (const entry of entries) {
       const file = path.join(directory, entry.name);
       if (entry.name.startsWith(".") || file === path.join(projectRoot, "src", "assets")) continue;
@@ -34,7 +50,10 @@ async function candidates(projectRoot) {
   for (const directory of ["src", "build", "utils", "wiki"]) await visit(path.join(projectRoot, directory));
   for (const name of ROOT_FILES) {
     const file = path.join(projectRoot, name);
-    const stat = await fs.lstat(file).catch((error) => { if (error.code === "ENOENT") return null; throw error; });
+    const stat = await fs.lstat(file).catch((error) => {
+      if (error.code === "ENOENT") return null;
+      throw error;
+    });
     if (stat?.isSymbolicLink()) throw new Error(`Refusing to rename through a symbolic link: ${file}`);
     if (stat?.isFile()) result.push(file);
   }
@@ -43,11 +62,17 @@ async function candidates(projectRoot) {
 
 export async function planRename({ projectRoot = PROJECT_ROOT, id, title, description, repository } = {}) {
   const manifest = readManifest(projectRoot);
-  if (id !== undefined && !/^[a-z][a-z0-9-]*$/.test(id)) throw new Error("--id must use lowercase letters, numbers, and hyphens, starting with a letter.");
-  if (title !== undefined && (typeof title !== "string" || !title.trim() || /[\r\n]/.test(title))) throw new Error("--title must be a nonempty, single-line title.");
-  if ([id, title, description, repository].every((value) => value === undefined)) throw new Error("Provide --id, --title, --description, or --repository.");
+  if (id !== undefined && !/^[a-z][a-z0-9-]*$/.test(id))
+    throw new Error("--id must use lowercase letters, numbers, and hyphens, starting with a letter.");
+  if (title !== undefined && (typeof title !== "string" || !title.trim() || /[\r\n]/.test(title)))
+    throw new Error("--title must be a nonempty, single-line title.");
+  if ([id, title, description, repository].every((value) => value === undefined))
+    throw new Error("Provide --id, --title, --description, or --repository.");
   const newId = id ?? manifest.id;
-  const oldRepository = typeof manifest.url === "string" && /^https:\/\/github\.com\/[^/]+\/[^/]+\/?$/.test(manifest.url) ? manifest.url.replace(/\/$/, "") : null;
+  const oldRepository =
+    typeof manifest.url === "string" && /^https:\/\/github\.com\/[^/]+\/[^/]+\/?$/.test(manifest.url)
+      ? manifest.url.replace(/\/$/, "")
+      : null;
   const newRepository = repository !== undefined ? repositoryUrl(repository) : oldRepository;
   const token = `__REPOSITORY_${randomUUID()}__`;
 
@@ -56,7 +81,8 @@ export async function planRename({ projectRoot = PROJECT_ROOT, id, title, descri
     if (oldRepository) result = result.replaceAll(oldRepository, token);
     result = result.replaceAll(manifest.id, newId);
     if (humanText && title !== undefined && manifest.title) result = result.replaceAll(manifest.title, title.trim());
-    if (humanText && description !== undefined && manifest.description) result = result.replaceAll(manifest.description, description);
+    if (humanText && description !== undefined && manifest.description)
+      result = result.replaceAll(manifest.description, description);
     if (oldRepository) result = result.replaceAll(token, newRepository ?? oldRepository);
     return result;
   }
@@ -64,7 +90,10 @@ export async function planRename({ projectRoot = PROJECT_ROOT, id, title, descri
   function replaceJson(value) {
     if (typeof value === "string") return replaceText(value, true);
     if (Array.isArray(value)) return value.map(replaceJson);
-    if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [replaceText(key, false), replaceJson(item)]));
+    if (value && typeof value === "object")
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [replaceText(key, false), replaceJson(item)]),
+      );
     return value;
   }
 
@@ -112,7 +141,8 @@ export async function renameModule(options = {}) {
   const staged = [];
   try {
     for (const change of changes) {
-      if (await fs.readFile(change.file, "utf8") !== change.before) throw new Error(`A file changed while planning the rename: ${change.relative}`);
+      if ((await fs.readFile(change.file, "utf8")) !== change.before)
+        throw new Error(`A file changed while planning the rename: ${change.relative}`);
       const temporary = `${change.file}.rename-${randomUUID()}.tmp`;
       await fs.writeFile(temporary, change.after, { flag: "wx" });
       staged.push({ ...change, temporary });
@@ -134,20 +164,30 @@ export async function renameModule(options = {}) {
 }
 
 async function main() {
-  const { values } = parseArgs({ options: {
-    id: { type: "string" }, title: { type: "string" }, description: { type: "string" }, repository: { type: "string" },
-    "dry-run": { type: "boolean", default: false },
-    help: { type: "boolean", default: false },
-  } });
+  const { values } = parseArgs({
+    options: {
+      id: { type: "string" },
+      title: { type: "string" },
+      description: { type: "string" },
+      repository: { type: "string" },
+      "dry-run": { type: "boolean", default: false },
+      help: { type: "boolean", default: false },
+    },
+  });
   if (values.help) {
-    console.log("Usage: npm run rename-module -- [--id my-module] [--title \"My Module\"] [--description \"Description\"] [--repository owner/repository] [--dry-run]");
-    console.log("Updates local text files only. Assets, generated builds, and existing Foundry links are left untouched.");
+    console.log(
+      'Usage: npm run rename-module -- [--id my-module] [--title "My Module"] [--description "Description"] [--repository owner/repository] [--dry-run]',
+    );
+    console.log(
+      "Updates local text files only. Assets, generated builds, and existing Foundry links are left untouched.",
+    );
     return;
   }
   const changes = await renameModule({ ...values, dryRun: values["dry-run"] });
   console.log(`${values["dry-run"] ? "Would update" : "Updated"} ${changes.length} text files.`);
   for (const file of changes) console.log(`  ${file}`);
-  if (!values["dry-run"] && changes.length) console.log("Rebuild and link the renamed module. Existing output directories and Foundry links are unchanged.");
+  if (!values["dry-run"] && changes.length)
+    console.log("Rebuild and link the renamed module. Existing output directories and Foundry links are unchanged.");
 }
 
 if (isMain(import.meta.url)) await main().catch(reportError);

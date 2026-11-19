@@ -27,7 +27,7 @@ export default [
     languageOptions: { ecmaVersion: "latest", sourceType: "module" },
     rules: {
       "array-callback-return": "error",
-      "eqeqeq": ["error", "always", { null: "ignore" }],
+      eqeqeq: ["error", "always", { null: "ignore" }],
       "no-console": "off",
       "no-duplicate-imports": ["error", { includeExports: true }],
       "no-eval": "error",
@@ -48,12 +48,7 @@ export default [
     languageOptions: { globals: { ...globals.browser, ...foundryGlobals } },
   },
   {
-    files: [
-      "build/**/*.{js,mjs,cjs}",
-      "utils/**/*.{js,mjs,cjs}",
-      "tests/**/*.{js,mjs,cjs}",
-      "*.config.{js,mjs,cjs}",
-    ],
+    files: ["build/**/*.{js,mjs,cjs}", "utils/**/*.{js,mjs,cjs}", "tests/**/*.{js,mjs,cjs}", "*.config.{js,mjs,cjs}"],
     languageOptions: { globals: globals.node },
   },
   {

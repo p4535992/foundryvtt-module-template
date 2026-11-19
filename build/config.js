@@ -21,7 +21,9 @@ export function readFoundryConfig({ optional = false, projectRoot = PROJECT_ROOT
   const file = path.join(projectRoot, "foundryconfig.json");
   if (!fs.existsSync(file)) {
     if (optional) return {};
-    throw new Error("Create foundryconfig.json from foundryconfig.example.json and configure your local Foundry paths.");
+    throw new Error(
+      "Create foundryconfig.json from foundryconfig.example.json and configure your local Foundry paths.",
+    );
   }
   const config = JSON.parse(fs.readFileSync(file, "utf8"));
   if (!config || typeof config !== "object" || Array.isArray(config)) {

@@ -1,9 +1,21 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { PROJECT_ROOT, getFoundryDataDirectory, getModuleDirectory, isMain, readFoundryConfig, readManifest, reportError } from "../build/config.js";
+import {
+  PROJECT_ROOT,
+  getFoundryDataDirectory,
+  getModuleDirectory,
+  isMain,
+  readFoundryConfig,
+  readManifest,
+  reportError,
+} from "../build/config.js";
 
-export async function linkModule({ projectRoot = PROJECT_ROOT, outRoot = "dist", config = readFoundryConfig({ projectRoot }) } = {}) {
+export async function linkModule({
+  projectRoot = PROJECT_ROOT,
+  outRoot = "dist",
+  config = readFoundryConfig({ projectRoot }),
+} = {}) {
   const { id } = readManifest(projectRoot);
   const target = getModuleDirectory(outRoot, projectRoot);
   const dataDirectory = getFoundryDataDirectory(config);
@@ -24,7 +36,9 @@ export async function linkModule({ projectRoot = PROJECT_ROOT, outRoot = "dist",
     const linkedTarget = await fs.realpath(linkPath).catch(() => null);
     const realTarget = await fs.realpath(target);
     if (linkedTarget === realTarget) return { linkPath, target, created: false };
-    throw new Error(`An existing link points elsewhere: ${linkPath}. Remove that link explicitly before linking this build.`);
+    throw new Error(
+      `An existing link points elsewhere: ${linkPath}. Remove that link explicitly before linking this build.`,
+    );
   }
   await fs.symlink(target, linkPath, process.platform === "win32" ? "junction" : "dir");
   return { linkPath, target, created: true };

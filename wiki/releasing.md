@@ -16,7 +16,7 @@ Before preparing a release, curate the relevant changes from Unreleased into a d
 - Describe a meaningful change included in this release.
 ```
 
-Replace YYYY-MM-DD with the intended release date. Keep the Unreleased heading for future work. The starter currently has only Unreleased notes: it does not claim that 14.0.0 has been published. Preparing a version without its own valid, nonempty section fails clearly.
+Replace YYYY-MM-DD with the intended release date. Keep the Unreleased heading for future work. The initial 14.0.0 entry is dated 2026-11-19; subsequent releases need their own curated version section. Preparing a version without its own valid, nonempty section fails clearly.
 
 Use only the relevant categories: Added, Changed, Deprecated, Removed, Fixed, and Security. Omit empty categories. Each included category needs an actual list item; TODO, TBD, and empty placeholders are rejected. A prerelease such as v14.0.0-rc.1 needs its own `[14.0.0-rc.1]` entry and does not borrow the final version's entry.
 
@@ -50,12 +50,12 @@ The packaging step preserves the source manifest and generates release metadata 
 
 For the example tag v14.0.0:
 
-| Field or link | Value |
-| --- | --- |
-| Attached manifest | https://github.com/p4535992/foundryvtt-module-template/releases/download/v14.0.0/module.json |
-| `download` | https://github.com/p4535992/foundryvtt-module-template/releases/download/v14.0.0/module.zip |
-| `manifest` update feed | https://github.com/p4535992/foundryvtt-module-template/releases/latest/download/module.json |
-| Latest stable release | https://github.com/p4535992/foundryvtt-module-template/releases/latest |
+| Field or link          | Value                                                                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------- |
+| Attached manifest      | https://github.com/p4535992/foundryvtt-module-template/releases/download/v14.0.0/module.json |
+| `download`             | https://github.com/p4535992/foundryvtt-module-template/releases/download/v14.0.0/module.zip  |
+| `manifest` update feed | https://github.com/p4535992/foundryvtt-module-template/releases/latest/download/module.json  |
+| Latest stable release  | https://github.com/p4535992/foundryvtt-module-template/releases/latest                       |
 
 The attached manifest installs the ZIP belonging to its exact release. Its update feed lets Foundry discover the latest stable version later. Prerelease artifacts remain addressable by their own release tag.
 

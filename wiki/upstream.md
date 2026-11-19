@@ -40,16 +40,16 @@ Changing a baseline hash records a review decision. Do not update it automatical
 
 ## Mapping and deliberate differences
 
-| Upstream area | Local approach |
-| --- | --- |
-| TypeScript source and helpers | JavaScript modules, JSDoc, and Node.js build helpers |
-| Separate static and TypeScript trees | A unified src/ tree with module.json, module.js, lang/, styles/, templates/, assets/, and scripts/ |
-| Vite ES module build | ES module output and Foundry globals, with module files under dist/&lt;module-id&gt;/; TypeScript-only path aliases are omitted |
-| Upstream ZIP name and root layout | module.zip containing one directory named after the module id |
-| Tag-triggered draft release | Packaging an explicitly published release or manually selected published release tag |
-| GitHub-generated release notes | Curated version entries from CHANGELOG.md and maintained English installation instructions, preserving unrelated author-written notes |
-| Discord and Foundry website publication | Omitted |
-| Development hot updates | Local rebuild and reload behavior documented for this implementation; no claim of identical behavior to every upstream HMR feature |
+| Upstream area                           | Local approach                                                                                                                        |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| TypeScript source and helpers           | JavaScript modules, JSDoc, and Node.js build helpers                                                                                  |
+| Separate static and TypeScript trees    | A unified src/ tree with module.json, module.js, lang/, styles/, templates/, assets/, and scripts/                                    |
+| Vite ES module build                    | ES module output and Foundry globals, with module files under dist/&lt;module-id&gt;/; TypeScript-only path aliases are omitted       |
+| Upstream ZIP name and root layout       | module.zip containing one directory named after the module id                                                                         |
+| Tag-triggered draft release             | Packaging an explicitly published release or manually selected published release tag                                                  |
+| GitHub-generated release notes          | Curated version entries from CHANGELOG.md and maintained English installation instructions, preserving unrelated author-written notes |
+| Discord and Foundry website publication | Omitted                                                                                                                               |
+| Development hot updates                 | Local rebuild and reload behavior documented for this implementation; no claim of identical behavior to every upstream HMR feature    |
 
 Upstream publish.yml remains in the comparison allowlist so that its role is visible, but it has no local publication counterpart.
 

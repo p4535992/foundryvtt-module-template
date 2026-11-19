@@ -8,7 +8,7 @@
 
 A reusable **JavaScript + Vite** foundation for Foundry Virtual Tabletop modules. It combines a small Foundry lifecycle, optional libWrapper integration, development tools, and reproducible release packaging.
 
-The starting module and package version is **14.0.0**, targeting Foundry VTT 14. This initial source checkpoint still needs dependency installation, a generated lockfile, and full build validation; see [initialization status](wiki/project-status.md).
+The starting module and package version is **14.0.0**, targeting Foundry VTT 14. See [verification](wiki/verification.md) for the automated checks and the remaining Foundry runtime validation.
 
 The project adapts useful features from [DFreds Module Template TS](https://github.com/DFreds/dfreds-module-template-ts) to JavaScript and a single `src/` tree. [Upstream tracking](wiki/upstream.md) records the source-to-local mapping and deliberate differences.
 
@@ -142,27 +142,27 @@ The fallback retains its original MIT attribution. [Third-party notices](THIRD_P
 
 ## Development commands
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Create one development build with source maps. |
-| `npm run watch` | Rebuild while source and copied resources change. |
-| `npm run hot` | Start Vite's local proxy to the running Foundry server. |
-| `npm run stage` | Create a staging build. |
-| `npm run build` | Create the production distribution. |
-| `npm run clean` | Clean managed build output while protecting live compendium data. |
-| `npm run link` | Link the built module into the configured Foundry Data directory. |
-| `npm run foundry -- --version 14` | Launch a configured Foundry installation. |
-| `npm run pack` | Build declared compendiums from source data. |
-| `npm run unpack` | Extract declared compendiums back into editable source data. |
-| `npm run rename-module -- --help` | Show the identity-change options. |
-| `npm run lint` | Check JavaScript and JSON/source conventions. |
-| `npm run format:check` | Check formatting without changing files. |
-| `npm run format` | Format project text files. |
-| `npm test` | Run behavioral tests with Node's built-in test runner. |
-| `npm run verify:package` | Validate a built module and its manifest paths. |
-| `npm run check` | Run lint, formatting, tests, build, and package verification. |
-| `npm run release:prepare -- --tag v1.2.3 --repository your-account/example-module` | Prepare release assets for an exact tag. |
-| `npm run upstream:check` | Manually compare approved upstream files against the recorded baseline. |
+| Command                                                                            | Purpose                                                                 |
+| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `npm run dev`                                                                      | Create one development build with source maps.                          |
+| `npm run watch`                                                                    | Rebuild while source and copied resources change.                       |
+| `npm run hot`                                                                      | Start Vite's local proxy to the running Foundry server.                 |
+| `npm run stage`                                                                    | Create a staging build.                                                 |
+| `npm run build`                                                                    | Create the production distribution.                                     |
+| `npm run clean`                                                                    | Clean managed build output while protecting live compendium data.       |
+| `npm run link`                                                                     | Link the built module into the configured Foundry Data directory.       |
+| `npm run foundry -- --version 14`                                                  | Launch a configured Foundry installation.                               |
+| `npm run pack`                                                                     | Build declared compendiums from source data.                            |
+| `npm run unpack`                                                                   | Extract declared compendiums back into editable source data.            |
+| `npm run rename-module -- --help`                                                  | Show the identity-change options.                                       |
+| `npm run lint`                                                                     | Check JavaScript and JSON/source conventions.                           |
+| `npm run format:check`                                                             | Check formatting without changing files.                                |
+| `npm run format`                                                                   | Format project text files.                                              |
+| `npm test`                                                                         | Run behavioral tests with Node's built-in test runner.                  |
+| `npm run verify:package`                                                           | Validate a built module and its manifest paths.                         |
+| `npm run check`                                                                    | Run lint, formatting, tests, build, and package verification.           |
+| `npm run release:prepare -- --tag v1.2.3 --repository your-account/example-module` | Prepare release assets for an exact tag.                                |
+| `npm run upstream:check`                                                           | Manually compare approved upstream files against the recorded baseline. |
 
 In hot mode, CSS can update without a page reload. JavaScript and other module resources use a full reload so lifecycle hooks and wrappers are not registered twice. Ordinary watch mode updates the output on disk; reload Foundry to load the rebuilt JavaScript.
 
@@ -231,9 +231,9 @@ For a release tagged `v1.2.3`, the generated manifest uses:
 
 ```json
 {
-  "version": "1.2.3",
-  "manifest": "https://github.com/OWNER/REPOSITORY/releases/latest/download/module.json",
-  "download": "https://github.com/OWNER/REPOSITORY/releases/download/v1.2.3/module.zip"
+    "version": "1.2.3",
+    "manifest": "https://github.com/OWNER/REPOSITORY/releases/latest/download/module.json",
+    "download": "https://github.com/OWNER/REPOSITORY/releases/download/v1.2.3/module.zip"
 }
 ```
 

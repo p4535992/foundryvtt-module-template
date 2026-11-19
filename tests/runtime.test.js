@@ -50,12 +50,16 @@ test("the public API waits for initialization and coalesces simultaneous opens",
   let openCount = 0;
   let completeOpen;
   let signalStarted;
-  const started = new Promise((resolve) => { signalStarted = resolve; });
+  const started = new Promise((resolve) => {
+    signalStarted = resolve;
+  });
   const application = { id: "demo" };
   const controller = createApiController(() => {
     openCount += 1;
     signalStarted();
-    return new Promise((resolve) => { completeOpen = resolve; });
+    return new Promise((resolve) => {
+      completeOpen = resolve;
+    });
   });
 
   const first = controller.api.open();
@@ -80,9 +84,23 @@ test("error reporting preserves a startup failure even if UI services are unavai
   const previousError = console.error;
   const previousWarn = console.warn;
   const logged = [];
-  globalThis.game = { i18n: { format() { throw new Error("Localization is unavailable."); } } };
-  globalThis.ui = { notifications: { error() { throw new Error("Notifications are unavailable."); } } };
-  console.error = (...values) => { logged.push(values); };
+  globalThis.game = {
+    i18n: {
+      format() {
+        throw new Error("Localization is unavailable.");
+      },
+    },
+  };
+  globalThis.ui = {
+    notifications: {
+      error() {
+        throw new Error("Notifications are unavailable.");
+      },
+    },
+  };
+  console.error = (...values) => {
+    logged.push(values);
+  };
   console.warn = () => {};
   t.after(() => {
     if (previousGame === undefined) delete globalThis.game;
@@ -100,7 +118,9 @@ test("error reporting preserves a startup failure even if UI services are unavai
 
 test("an initialization failure rejects waiting callers and cannot become ready", async () => {
   let opened = false;
-  const controller = createApiController(() => { opened = true; });
+  const controller = createApiController(() => {
+    opened = true;
+  });
   const expected = new Error("Template loading failed");
   const waitingOpen = assert.rejects(controller.api.open(), (error) => error === expected);
   const waitingReady = assert.rejects(controller.api.whenReady, (error) => error === expected);
@@ -144,16 +164,25 @@ test("the public API reports the installed package version after release stampin
 
 test("the fallback preserves method context, arguments, return values, and an inherited method", (t) => {
   const prototype = {
-    multiply(value) { return this.factor * value; },
+    multiply(value) {
+      return this.factor * value;
+    },
   };
   const target = Object.assign(Object.create(prototype), { factor: 3 });
   globalThis.__moduleTemplateTest = target;
-  t.after(() => { delete globalThis.__moduleTemplateTest; });
+  t.after(() => {
+    delete globalThis.__moduleTemplateTest;
+  });
 
-  LibWrapperFallback.register("test", "__moduleTemplateTest.multiply", function (wrapped, value) {
-    assert.equal(this, target);
-    return wrapped(value + 1) + 2;
-  }, "WRAPPER");
+  LibWrapperFallback.register(
+    "test",
+    "__moduleTemplateTest.multiply",
+    function (wrapped, value) {
+      assert.equal(this, target);
+      return wrapped(value + 1) + 2;
+    },
+    "WRAPPER",
+  );
 
   assert.equal(target.multiply(2), 11);
   assert.equal(prototype.multiply.call({ factor: 2 }, 2), 4);
@@ -162,18 +191,34 @@ test("the fallback preserves method context, arguments, return values, and an in
 test("the fallback handles a quoted getter and setter without altering the other accessor", (t) => {
   const target = {
     value: 2,
-    get ["sample.value"]() { return this.value; },
-    set ["sample.value"](value) { this.value = value; },
+    get ["sample.value"]() {
+      return this.value;
+    },
+    set ["sample.value"](value) {
+      this.value = value;
+    },
   };
   globalThis.__moduleTemplateTest = target;
-  t.after(() => { delete globalThis.__moduleTemplateTest; });
+  t.after(() => {
+    delete globalThis.__moduleTemplateTest;
+  });
 
-  LibWrapperFallback.register("test", "__moduleTemplateTest['sample.value']", function (wrapped) {
-    return wrapped() * 2;
-  }, "WRAPPER");
-  LibWrapperFallback.register("test", '__moduleTemplateTest["sample.value"]#set', function (wrapped, value) {
-    return wrapped(value + 1);
-  }, "WRAPPER");
+  LibWrapperFallback.register(
+    "test",
+    "__moduleTemplateTest['sample.value']",
+    function (wrapped) {
+      return wrapped() * 2;
+    },
+    "WRAPPER",
+  );
+  LibWrapperFallback.register(
+    "test",
+    '__moduleTemplateTest["sample.value"]#set',
+    function (wrapped, value) {
+      return wrapped(value + 1);
+    },
+    "WRAPPER",
+  );
 
   target["sample.value"] = 4;
   assert.equal(target.value, 5);

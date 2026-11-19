@@ -30,7 +30,14 @@ export function getPackJobs({ projectRoot = PROJECT_ROOT, outRoot = "dist", pack
   return selected;
 }
 
-export async function runPacks({ action = "pack", projectRoot = PROJECT_ROOT, outRoot = "dist", pack, force = false, cli } = {}) {
+export async function runPacks({
+  action = "pack",
+  projectRoot = PROJECT_ROOT,
+  outRoot = "dist",
+  pack,
+  force = false,
+  cli,
+} = {}) {
   if (!["pack", "unpack"].includes(action)) throw new Error("Choose pack or unpack.");
   const jobs = getPackJobs({ projectRoot, outRoot, pack });
   if (jobs.length === 0) {
@@ -41,14 +48,17 @@ export async function runPacks({ action = "pack", projectRoot = PROJECT_ROOT, ou
     const input = action === "pack" ? job.source : job.destination;
     const output = action === "pack" ? job.destination : job.source;
     const inputStat = await fs.lstat(input).catch(() => null);
-    if (!inputStat?.isDirectory() || inputStat.isSymbolicLink()) throw new Error(`Missing pack input directory: ${input}`);
+    if (!inputStat?.isDirectory() || inputStat.isSymbolicLink())
+      throw new Error(`Missing pack input directory: ${input}`);
     const outputStat = await fs.lstat(output).catch(() => null);
     if (outputStat?.isSymbolicLink()) throw new Error(`Refusing to replace a pack link: ${output}`);
     if (outputStat && !force) {
-      throw new Error(`Pack output already exists: ${output}. Close the Foundry world, preserve your changes, and pass --force to replace it.`);
+      throw new Error(
+        `Pack output already exists: ${output}. Close the Foundry world, preserve your changes, and pass --force to replace it.`,
+      );
     }
   }
-  const { compilePack, extractPack } = cli ?? await import("@foundryvtt/foundryvtt-cli");
+  const { compilePack, extractPack } = cli ?? (await import("@foundryvtt/foundryvtt-cli"));
   if (action === "pack") await prepareModuleDirectory({ projectRoot, outRoot });
   for (const job of jobs) {
     try {
@@ -60,19 +70,31 @@ export async function runPacks({ action = "pack", projectRoot = PROJECT_ROOT, ou
         await extractPack(job.destination, job.source, { clean: true, omitVolatile: true, log: true });
       }
     } catch (error) {
-      throw new Error(`Failed to ${action} ${job.name}: ${error.message}. Close any Foundry world using the pack before trying again.`, { cause: error });
+      throw new Error(
+        `Failed to ${action} ${job.name}: ${error.message}. Close any Foundry world using the pack before trying again.`,
+        { cause: error },
+      );
     }
   }
 }
 
 async function main() {
-  const { values, positionals } = parseArgs({ allowPositionals: true, options: {
-    "out-root": { type: "string", default: "dist" },
-    pack: { type: "string" },
-    force: { type: "boolean", default: false },
-  } });
-  if (positionals.length > 1) throw new Error("Usage: node utils/packs.js pack|unpack [--pack name] [--out-root path] [--force]");
-  await runPacks({ action: positionals[0] ?? "pack", outRoot: values["out-root"], pack: values.pack, force: values.force });
+  const { values, positionals } = parseArgs({
+    allowPositionals: true,
+    options: {
+      "out-root": { type: "string", default: "dist" },
+      pack: { type: "string" },
+      force: { type: "boolean", default: false },
+    },
+  });
+  if (positionals.length > 1)
+    throw new Error("Usage: node utils/packs.js pack|unpack [--pack name] [--out-root path] [--force]");
+  await runPacks({
+    action: positionals[0] ?? "pack",
+    outRoot: values["out-root"],
+    pack: values.pack,
+    force: values.force,
+  });
 }
 
 if (isMain(import.meta.url)) await main().catch(reportError);

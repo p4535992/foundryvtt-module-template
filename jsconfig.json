@@ -8,17 +8,6 @@
     "resolveJsonModule": true,
     "types": []
   },
-  "include": [
-    "src/**/*.js",
-    "build/**/*.js",
-    "vite.config.js",
-    "tests/**/*.js",
-    "utils/**/*.js"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "artifacts",
-    ".release-stage"
-  ]
+  "include": ["src/**/*.js", "build/**/*.js", "vite.config.js", "tests/**/*.js", "utils/**/*.js"],
+  "exclude": ["node_modules", "dist", "artifacts", ".release-stage"]
 }

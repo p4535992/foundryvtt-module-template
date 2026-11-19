@@ -1,4 +1,5 @@
 <!-- foundry-module-template:installation:start -->
+
 ## Installation
 
 This is **{{MODULE_ID}} {{VERSION}}**.
@@ -16,4 +17,5 @@ The installed module uses this update feed:
 {{UPDATE_MANIFEST_URL}}
 
 For manual installation, extract module.zip into your Foundry user data directory's Data/modules/ folder. The archive already contains the {{MODULE_ID}}/ directory; the resulting manifest must be at Data/modules/{{MODULE_ID}}/module.json. Restart or reload Foundry, then enable the module in your world.
+
 <!-- foundry-module-template:installation:end -->

@@ -40,7 +40,11 @@ export async function prepareModuleDirectory({ outRoot = "dist", projectRoot = P
   return directory;
 }
 
-export async function cleanModuleDirectory({ outRoot = "dist", projectRoot = PROJECT_ROOT, preservePacks = true } = {}) {
+export async function cleanModuleDirectory({
+  outRoot = "dist",
+  projectRoot = PROJECT_ROOT,
+  preservePacks = true,
+} = {}) {
   const directory = await prepareModuleDirectory({ outRoot, projectRoot });
   for (const entry of await fs.readdir(directory)) {
     if (preservePacks && entry === "packs") continue;
