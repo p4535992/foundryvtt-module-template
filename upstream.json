@@ -206,6 +206,7 @@
     "Identity uses three explicit authored files with literal runtime constants; paths, translation namespaces, and Sass scoping derive from their validated values.",
     "The generic settings application controls real client debug logging; no sample feature toggle or custom global Handlebars helper is registered.",
     "ModuleApi exposes readiness and a native ModuleSocket service; the guarded module.socket alias must preserve the core boolean manifest flag and be verified in a real Foundry build.",
+    "Opt-in SocketlibProxy instance methods share the native service while preserving its payload/options API; the adapter adds no socketlib dependency, global factories, readiness event, protocol, or error-class emulation.",
     "Release workflows have no version input: the source manifest, package, literal constant, and dated changelog must agree on strict unprefixed SemVer."
   ],
   "localAdditions": [
@@ -232,6 +233,17 @@
     {
       "localPaths": ["build/identity.js", "utils/rename.js"],
       "decision": "Original validation of the three authored identity files, structural language-root transformation, and targeted renaming with generated lockfile metadata."
+    },
+    {
+      "localPaths": ["src/scripts/socketlib-proxy.js", "wiki/socketlib-migration.md"],
+      "decision": "Original opt-in adapter for documented socketlib instance methods over ModuleSocket: variadic arguments, local handler-reference lookup, awaited single-user results including undefined, non-blocking broadcasts with error reporting, explicit caller authorization, and ownership-guarded cleanup. API contracts were reviewed without copying socketlib implementation code or emulating its globals, factories, events, protocol, or error classes.",
+      "references": [
+        "https://github.com/farling42/foundryvtt-socketlib/blob/develop/README.md",
+        "https://github.com/farling42/foundryvtt-socketlib/blob/develop/src/socketlib.js",
+        "https://foundryvtt.com/api/v14/variables/CONFIG.queries.html",
+        "https://foundryvtt.com/api/v14/classes/foundry.documents.User.html#query",
+        "https://foundryvtt.com/api/v14/classes/foundry.documents.User.html#queryMany"
+      ]
     }
   ]
 }

@@ -84,6 +84,8 @@ test("lifecycle exposes the public API and active socket after services are read
   assert.equal(await moduleApi.whenReady, moduleApi);
   assert.equal(installedModule.socket, moduleApi.socket);
   assert.equal(installedModule.socket.active, true);
+  assert.equal(installedModule.socket.compat, moduleApi.socket.compat);
+  assert.equal(installedModule.socket.compat.active, true);
   assert.equal(installedModule.toObject(true).socket, true);
   assert.deepEqual(loadedTemplates, [`${MODULE_PATH}/templates/module-settings.hbs`]);
   assert.deepEqual(emitted, [[`${MODULE_ID}.ready`, moduleApi]]);
@@ -96,6 +98,9 @@ test("lifecycle exposes the public API and active socket after services are read
     status: "ready",
     socketActive: true,
     socketProvider: "foundry",
+  });
+  assert.deepEqual(await globalThis.CONFIG.queries[`${MODULE_ID}.compat-getStatus`]({ args: [] }, { user }), {
+    result: [status],
   });
 });
 

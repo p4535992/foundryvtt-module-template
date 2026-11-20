@@ -4,6 +4,12 @@ Notable changes to this template are recorded here. Entries are curated by maint
 
 ## [Unreleased]
 
+### Added
+
+- An opt-in SocketlibProxy at the socket service's `.compat` path, providing documented socketlib-style instance methods over native Foundry 14 queries without a socketlib dependency.
+- Variadic compatibility handlers, named or function-reference execution, result-returning calls with preserved undefined values, and broadcasts with separate background error reporting.
+- Explicit compatibility-handler authorization, canonical caller context, guarded registration cleanup, and a migration guide covering API scope and multiplayer validation.
+
 ## [14.0.0] - 2026-11-19
 
 ### Added

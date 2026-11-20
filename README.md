@@ -18,6 +18,7 @@ The project adapts useful features from [DFreds Module Template TS](https://gith
 - `ModuleApi` with readiness, status, settings-window access, and a native `ModuleSocket` service.
 - A reusable `ModuleSettingsApplication` for the module's real client debug setting.
 - Named remote actions using Foundry 14 `CONFIG.queries`, `User.query`, and `User.queryMany`.
+- An opt-in `SocketlibProxy` for socketlib-style instance methods over the same native service.
 - Optional libWrapper integration with no registered wrappers in a fresh module.
 - Targeted renaming, safe Foundry linking, a launcher, and optional compendium tools.
 - Release assets named `module.json` and `module.zip`, with the module-id directory inside the archive.
@@ -93,6 +94,7 @@ src/
     module-registry.js        API attachment and guarded runtime socket alias
     socket.js                 ModuleSocket over native Foundry queries
     socket-handlers.js        Named operations and authorization policies
+    socketlib-proxy.js        Optional instance-method compatibility adapter
     settings.js               Client debug setting registration and access
     logger.js                 Module-scoped diagnostics
     wrappers.js               Optional libWrapper integration
@@ -157,6 +159,21 @@ The service provides `executeAsUser`, `executeAsGM`, `executeForUsers`, `execute
 Socketlib remains a maintained option for other projects, with [Foundry 14 compatibility listed by its maintainer](https://foundryvtt.com/packages/socketlib). Its [current README](https://github.com/farling42/foundryvtt-socketlib/blob/develop/README.md) recommends evaluating native queries for Foundry 14+. This template uses an original native service and does not copy socketlib implementation code.
 
 See [runtime behavior](wiki/runtime.md) for exact signatures, result handling, authorization, lifecycle rules, and multiplayer smoke tests.
+
+### Socketlib-style instance methods
+
+Use the cached `SocketlibProxy` at **`game.modules.get(MODULE_ID).socket.compat`** after readiness, or through the canonical **`.api.socket.compat`** path:
+
+```js
+const api = game.modules.get(MODULE_ID).api;
+await api.whenReady;
+const socket = api.socket.compat;
+const status = await socket.executeAsGM("getStatus");
+```
+
+The included `getStatus` action is registered on both interfaces. The proxy accepts variadic arguments and a registered handler name or function reference. Its `executeAsGM` and `executeAsUser` calls await results, including `undefined`. Its `executeFor*` broadcasts resolve after initiating queries and report later failures separately; they do not return the native service's per-user result map. The final argument is always handler data, never native timeout options.
+
+This original adapter supports the documented socketlib instance methods. It adds no socketlib dependency, global, factory, readiness hook, wire protocol, or error-class emulation. The native `ModuleSocket` payload/options API remains unchanged. See the [socketlib migration guide](wiki/socketlib-migration.md) for registration, authorization, supported methods, and broadcast error reporting.
 
 ### Optional libWrapper integration
 

@@ -1,4 +1,5 @@
 import { MODULE_ID } from "./constants.js";
+import { SocketlibProxy } from "./socketlib-proxy.js";
 
 const MAX_TIMEOUT = 2_147_483_647;
 const allowGM = (user) => user.isGM === true;
@@ -41,6 +42,21 @@ function validatePayload(payload) {
   validateJson(payload);
 }
 
+function ownsQuery(registration) {
+  if (!registration?.descriptor) return false;
+  const current = Object.getOwnPropertyDescriptor(registration.registry, registration.name);
+  const original = registration.descriptor;
+  return Boolean(
+    current &&
+    "value" in current &&
+    current.value === registration.receiver &&
+    current.configurable &&
+    current.configurable === original.configurable &&
+    current.enumerable === original.enumerable &&
+    current.writable === original.writable,
+  );
+}
+
 /** A small adapter over Foundry V14 User queries; it does not implement a second RPC protocol. */
 export class ModuleSocket {
   #moduleId;
@@ -49,6 +65,7 @@ export class ModuleSocket {
   #getUserClass;
   #timeout;
   #active = false;
+  #compat;
   #registrations = new Map();
 
   constructor({
@@ -79,6 +96,11 @@ export class ModuleSocket {
     return this.#active;
   }
 
+  /** Opt-in socketlib-style instance methods; native payload/options signatures stay unchanged. */
+  get compat() {
+    return (this.#compat ??= new SocketlibProxy(this, { getGame: this.#getGame }));
+  }
+
   /** Register on every client during init. authorize(user, payload) must resolve to true. */
   register(action, handler, { authorize = allowGM } = {}) {
     validateAction(action);
@@ -94,7 +116,7 @@ export class ModuleSocket {
         existing.handler === handler &&
         existing.authorize === authorize &&
         existing.registry === registry &&
-        registry[name] === existing.receiver
+        ownsQuery(existing)
       )
         return this;
       throw new Error(`Socket action is already registered or its registration was replaced: ${action}`);
@@ -102,7 +124,8 @@ export class ModuleSocket {
     if (name in registry) throw new Error(`Foundry query is already registered: ${name}`);
     const receiver = (payload, context) => this.#receive(action, payload, context);
     registry[name] = receiver;
-    this.#registrations.set(action, { name, registry, receiver, handler, authorize });
+    const descriptor = Object.getOwnPropertyDescriptor(registry, name);
+    this.#registrations.set(action, { name, registry, receiver, handler, authorize, descriptor });
     return this;
   }
 
@@ -116,11 +139,16 @@ export class ModuleSocket {
     return this;
   }
 
+  ownsRegistration(action, handler) {
+    const registration = this.#registrations.get(action);
+    return Boolean(registration && registration.handler === handler && ownsQuery(registration));
+  }
+
   unregister(action) {
     validateAction(action);
     const registration = this.#registrations.get(action);
     if (!registration) return false;
-    if (registration.registry[registration.name] === registration.receiver) {
+    if (ownsQuery(registration)) {
       delete registration.registry[registration.name];
     }
     this.#registrations.delete(action);
@@ -128,6 +156,7 @@ export class ModuleSocket {
   }
 
   dispose() {
+    this.#compat?.dispose();
     this.deactivate();
     for (const action of this.#registrations.keys()) this.unregister(action);
   }
@@ -135,7 +164,7 @@ export class ModuleSocket {
   #registration(action) {
     validateAction(action);
     const registration = this.#registrations.get(action);
-    if (!registration || registration.registry[registration.name] !== registration.receiver) {
+    if (!ownsQuery(registration)) {
       throw new Error(`Socket action is not registered by this service: ${action}`);
     }
     return registration;

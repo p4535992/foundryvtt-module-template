@@ -12,4 +12,5 @@ function allowActiveUser(user) {
 /** Register each named operation on every client during init. */
 export function registerSocketHandlers() {
   moduleSocket.register("getStatus", getStatus, { authorize: allowActiveUser });
+  moduleSocket.compat.register("getStatus", getStatus, { authorize: allowActiveUser });
 }

@@ -14,6 +14,7 @@ The runtime is JavaScript ES modules targeting Foundry VTT 14. Foundry loads the
 | `src/scripts/module-registry.js`              | API attachment and guarded runtime socket alias                                               |
 | `src/scripts/socket.js`                       | `ModuleSocket`, backed by native Foundry queries                                              |
 | `src/scripts/socket-handlers.js`              | Named remote actions and their authorization policies                                         |
+| `src/scripts/socketlib-proxy.js`              | Opt-in socketlib-style instance methods over the native service                               |
 | `src/scripts/settings.js`                     | Registration and access for the real client debug setting                                     |
 | `src/scripts/logger.js`                       | Module diagnostics and user-facing error reporting                                            |
 | `src/scripts/applications/module-settings.js` | `ModuleSettingsApplication`                                                                   |
@@ -111,7 +112,7 @@ moduleSocket.register(
 
 The service prefixes the action with `MODULE_ID + "."`. Action names start with a letter and contain only letters, digits, underscores, or hyphens. Duplicate or conflicting registrations are refused. Repeating the same registration is safe only when its handler, policy, and registry entry are unchanged.
 
-The handler receives `(payload, { user })`. The authorization function receives `(user, payload)` and may be asynchronous; it must resolve to exactly `true`. Omitting it permits GM callers only. The base module registers only `getStatus`, with an explicit policy allowing active users to read its status.
+The handler receives `(payload, { user })`. The authorization function receives `(user, payload)` and may be asynchronous; it must resolve to exactly `true`. Omitting it permits GM callers only. The base module registers only `getStatus`, with an explicit policy allowing active users to read its status. It registers that operation separately on the native and compatibility interfaces.
 
 The service resolves the caller from core's query context back to the canonical active User in `game.users`. A claimed user id inside the payload never replaces that caller. Feature handlers must still validate operation-specific fields, ownership, and permissions before making changes. The current caller also needs the core [QUERY_USER permission](https://foundryvtt.com/api/v14/variables/CONST.USER_PERMISSIONS.html).
 
@@ -141,6 +142,18 @@ These calls collect settled outcomes; they do not promise socketlib's fire-and-f
 
 Socketlib remains useful for projects with different compatibility or API requirements. Its [current README](https://github.com/farling42/foundryvtt-socketlib/blob/develop/README.md) recommends considering native queries on Foundry 14+, and its [official package](https://foundryvtt.com/packages/socketlib) declares Foundry 14 compatibility. This starter has no socketlib dependency, fallback, or copied socketlib implementation.
 
+## Opt-in SocketlibProxy
+
+`ModuleSocket.compat` lazily creates and caches a `SocketlibProxy` backed by that service. Register compatibility handlers on every client inside `registerSocketHandlers` during init, then wait for `api.whenReady` before executing them. The starter registers its read-only `getStatus` operation on both interfaces during init, so both share the same readiness and lifetime.
+
+After readiness, **`game.modules.get(MODULE_ID).socket.compat`** and **`game.modules.get(MODULE_ID).api.socket.compat`** refer to the same proxy. Its `active` and `provider` getters reflect the native service. It introduces no independent transport or socketlib readiness event.
+
+The proxy's calls use variadic handler arguments. `executeAsGM` and `executeAsUser` await and return the result; `undefined` results are preserved. The `executeFor*` methods resolve after initiating native fan-out, including self-targeted queries, without awaiting remote handlers. Later failures go to an error reporter, with `logger.error` as the default. Use the unchanged native API when the caller needs per-user settled outcomes or explicit per-call timeout options.
+
+Registration defaults to GM caller authorization. An explicit `authorize(user, ...args)` policy can permit other callers and must resolve to exactly `true`. Ordinary function handlers receive a frozen `this.socketdata.userId` from the canonical core caller; arrow functions retain lexical `this`. QUERY_USER, JSON serialization, native timeouts, and operation-specific permission checks still apply.
+
+The [socketlib migration guide](socketlib-migration.md) lists the supported instance methods, handler-reference lookup, recipient selection, lifecycle helpers, and error behavior. This is an original API adapter, not a replacement for every socketlib integration or its global API.
+
 ## Settings application, localization, and styles
 
 `ModuleSettingsApplication` uses Foundry's [ApplicationV2](https://foundryvtt.com/api/v14/classes/foundry.applications.api.ApplicationV2.html) with `HandlebarsApplicationMixin`. It renders `templates/module-settings.hbs`, shows the module identity and current debug state, and changes the real debug setting through `game.settings`.
@@ -161,7 +174,7 @@ A successful fallback registration logs a warning once and schedules a localized
 
 CSS can update through Vite hot replacement. Runtime JavaScript, templates, translations, manifest, and asset changes use full-page reloads so registration and readiness restart coherently. There is no custom runtime HMR protocol or automatic rerender of other modules.
 
-The small entry point, lifecycle organization, settings/logger conventions, and limited libWrapper fallback are adapted from [DFreds Module Template TS](https://github.com/DFreds/dfreds-module-template-ts). Literal identity validation, structural translation generation, the settings application, `ModuleApi`, native `ModuleSocket`, authorization policies, and guarded runtime alias are local design choices. [upstream.json](../upstream.json) records the mapping without treating these additions as upstream code.
+The small entry point, lifecycle organization, settings/logger conventions, and limited libWrapper fallback are adapted from [DFreds Module Template TS](https://github.com/DFreds/dfreds-module-template-ts). Literal identity validation, structural translation generation, the settings application, `ModuleApi`, native `ModuleSocket`, opt-in `SocketlibProxy`, authorization policies, and guarded runtime alias are local design choices. [upstream.json](../upstream.json) records the mapping without treating these additions as upstream code.
 
 ## Runtime smoke test
 
@@ -176,5 +189,6 @@ Use a licensed Foundry installation and a disposable world. Record the exact Fou
 7. For any new mutating action, verify that unauthorized callers are rejected before changes occur, including a payload containing a false caller id. Test its actual feature-specific ownership policy.
 8. Rename a test copy through the three identity files, rebuild, and verify translated keys, style scoping, template paths, API identity, and query names. Test translation/style changes in watch and hot mode.
 9. If a feature adds a wrapper, test real libWrapper and each supported fallback scenario explicitly.
+10. If using `.compat`, check the same proxy through both public paths, result-returning `getStatus` calls, current-GM selection, and broadcasts with a GM and player. Confirm that awaiting a broadcast does not await any recipient, that failed recipients reach the error reporter, and that canonical caller authorization also applies to self-targets. Follow the migration guide's [runtime checklist](socketlib-migration.md#runtime-validation).
 
 Controlled Node tests do not establish real Foundry socket delivery, caller context, rendering, browser timeouts, multiplayer behavior, or runtime alias compatibility. Complete those checks on the installed package.

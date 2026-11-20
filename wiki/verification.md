@@ -17,11 +17,17 @@ Publication reads src/module.json.version automatically and requires exact consi
 
 Run npm run check before preparing a release. The GitHub Check workflow uses the same command. The Create Release and Create Prerelease workflows repeat these checks, create the associated tag, and publish only after module.json and module.zip have been uploaded and verified.
 
+## Unreleased: socketlib-style instance methods
+
+The opt-in `SocketlibProxy` is an addition after the 14.0.0 baseline. Its focused tests exercise cached access and shared readiness, registration ownership, handler names and function-reference lookup, strict caller authorization, frozen sender context, variadic JSON arguments, and preservation of `undefined` results. They also cover current-GM selection, recipient filtering without input mutation, broadcasts that do not await handlers, background error reporting, and lifecycle cleanup.
+
+These controlled tests validate the adapter contract without emulating all socketlib behavior or establishing real Foundry delivery. The native payload/options API and per-user result map remain separate from compatibility broadcasts. Use the [migration guide](socketlib-migration.md) when choosing the interface and interpreting its promises.
+
 ## Foundry runtime validation
 
 A licensed Foundry VTT instance is not part of this repository. The automated checks do not establish that the module has been exercised in an actual Foundry world, with multiple clients, or through a live Foundry development proxy. In particular, controlled test substitutes do not verify core query delivery/caller context, QUERY_USER enforcement in a live world, timeout behavior, or the module.socket property shape on an actual Foundry build.
 
-The manifest targets Foundry generation 14 and leaves compatibility.verified unset. Set that field only after testing a specific Foundry build. Follow the [runtime smoke tests](runtime.md) and [development guide](development.md) when validating a derived module. Confirm the public API, the active socket alias, and that module.toObject(true).socket and module.toJSON().socket retain the manifest boolean after alias installation. Record both GM and player outcomes, including a rejected unauthorized query and a disconnected target.
+The manifest targets Foundry generation 14 and leaves compatibility.verified unset. Set that field only after testing a specific Foundry build. Follow the [runtime smoke tests](runtime.md) and [development guide](development.md) when validating a derived module. Confirm the public API, the active socket alias, and that module.toObject(true).socket and module.toJSON().socket retain the manifest boolean after alias installation. Record both GM and player outcomes, including a rejected unauthorized query and a disconnected target. When using `.compat`, also complete its [runtime validation checklist](socketlib-migration.md#runtime-validation); no live Foundry result is claimed for the proxy.
 
 ## Maintaining the verification record
 

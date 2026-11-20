@@ -15,6 +15,7 @@
 - Preserve the ModuleApi readiness contract and public paths `game.modules.get(MODULE_ID).api` and, after readiness, `game.modules.get(MODULE_ID).socket`. The canonical service is `.api.socket`.
 - Guard the runtime socket alias and preserve the boolean core manifest flag in source and serialization. Never overwrite an unknown accessor; record a real Foundry smoke test before claiming compatibility.
 - Use the original ModuleSocket over native Foundry 14 queries, with no socketlib dependency or fallback. Registered actions default to GM caller authorization; broader access must be explicit. Use core caller context, QUERY_USER permission checks, JSON payloads/results, and unchanged per-user settled results. Do not infer cancellation from timeouts or automatically retry mutations.
+- Keep socketlib-style instance compatibility opt-in through the cached `.compat` SocketlibProxy. Preserve native payload/options signatures. Proxy calls use variadic data, return results for `executeAsGM`/`executeAsUser`, and initiate `executeFor*` broadcasts without awaiting recipients; report later failures through `onError`. Keep default GM authorization, strict true policies, canonical frozen sender context, and ownership-guarded cleanup. Reserve native `compat-` and `compat_` action prefixes for the adapter. Do not introduce socketlib globals, readiness events, factories, protocol emulation, or promises of complete socketlib compatibility.
 
 ## Build and release
 
