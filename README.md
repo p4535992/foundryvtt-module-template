@@ -7,7 +7,7 @@
 
 A reusable **JavaScript + Vite** foundation for Foundry Virtual Tabletop modules. It combines a small Foundry lifecycle, a settings application, native Foundry 14 remote queries, optional libWrapper integration, development tools, and reproducible release packaging.
 
-The starting module and package version is **14.0.0**, targeting Foundry VTT 14. See [verification](wiki/verification.md) for the automated checks and the remaining Foundry runtime validation.
+The current module and package version is **14.1.0**, targeting Foundry VTT 14. See [verification](wiki/verification.md) for the automated checks and the remaining Foundry runtime validation.
 
 The project adapts useful features from [DFreds Module Template TS](https://github.com/DFreds/dfreds-module-template-ts) to JavaScript and a single `src/` tree. [Upstream tracking](wiki/upstream.md) records the source-to-local mapping and deliberate differences.
 
@@ -42,7 +42,7 @@ Create your repository from this project and clone it outside Foundry's data dir
 ```sh
 nvm use
 npm ci
-npm run rename-module -- --id example-module --title "Example Module" --version 14.0.0 --description "An example Foundry VTT module." --repository your-account/example-module
+npm run rename-module -- --id example-module --title "Example Module" --version 14.1.0 --description "An example Foundry VTT module." --repository your-account/example-module
 ```
 
 Only three authored files contain the identity fields that need manual changes:
@@ -283,11 +283,11 @@ For a release tagged `1.2.3`, the generated manifest uses:
 
 `download` identifies the archive for that exact release. Stable releases use the latest stable manifest as their update feed. Prereleases point to the manifest attached to their own tag; choosing another prerelease or the stable channel is an explicit installation decision.
 
-The publication workflows read the version automatically from `src/module.json` and require exact consistency with `package.json.version` and the literal `MODULE_VERSION`. Tags use that same unprefixed semantic version, such as `14.0.0` or `14.0.1-rc.1`. A leading `v` is rejected rather than removed.
+The publication workflows read the version automatically from `src/module.json` and require exact consistency with `package.json.version` and the literal `MODULE_VERSION`. Tags use that same unprefixed semantic version, such as `14.1.0` or `14.1.1-rc.1`. A leading `v` is rejected rather than removed.
 
 ### Create a release or prerelease
 
-Prepare all three version fields and the matching dated changelog entry in the revision you intend to publish. In GitHub Actions, choose **Create Release** when the source version is stable, such as `14.0.0`, or **Create Prerelease** when it has a suffix, such as `14.0.1-rc.1`. Select the source branch or tag and run the workflow. There is no version input; the selected workflow validates that the source version belongs to its channel.
+Prepare all three version fields and the matching dated changelog entry in the revision you intend to publish. In GitHub Actions, choose **Create Release** when the source version is stable, such as `14.1.0`, or **Create Prerelease** when it has a suffix, such as `14.1.1-rc.1`. Select the source branch or tag and run the workflow. There is no version input; the selected workflow validates that the source version belongs to its channel.
 
 The workflow checks and packages the exact selected commit before creating its tag. It then creates a draft release, uploads and verifies both assets, and publishes the completed release. No tag or release needs to exist before the first run. Existing tags must already point to the same commit; published releases cannot be replaced. A failed upload leaves a draft that can be resumed from the same source revision.
 
