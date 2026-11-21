@@ -9,7 +9,7 @@ A reusable **JavaScript + Vite** foundation for Foundry Virtual Tabletop modules
 
 The current module and package version is **14.1.0**, targeting Foundry VTT 14. See [verification](wiki/verification.md) for the automated checks and the remaining Foundry runtime validation.
 
-The project adapts useful features from [DFreds Module Template TS](https://github.com/DFreds/dfreds-module-template-ts) to JavaScript and a single `src/` tree. [Upstream tracking](wiki/upstream.md) records the source-to-local mapping and deliberate differences.
+This JavaScript template adapts features from [DFreds Module Template TS](https://github.com/DFreds/dfreds-module-template-ts) to a single `src/` tree.
 
 ## What is included
 
@@ -156,8 +156,6 @@ Register operations in `socket-handlers.js` using `register(action, handler, { a
 
 The service provides `executeAsUser`, `executeAsGM`, `executeForUsers`, `executeForEveryone`, and `executeForOthers`. Multi-user calls preserve core's `Map<User, PromiseSettledResult>`, including individual failures. Timeouts bound waiting; do not treat a timeout as cancellation or automatically retry a mutating action.
 
-Socketlib remains a maintained option for other projects, with [Foundry 14 compatibility listed by its maintainer](https://foundryvtt.com/packages/socketlib). Its [current README](https://github.com/farling42/foundryvtt-socketlib/blob/develop/README.md) recommends evaluating native queries for Foundry 14+. This template uses an original native service and does not copy socketlib implementation code.
-
 See [runtime behavior](wiki/runtime.md) for exact signatures, result handling, authorization, lifecycle rules, and multiplayer smoke tests.
 
 ### Socketlib-style instance methods
@@ -179,7 +177,7 @@ This original adapter supports the documented socketlib instance methods. It add
 
 The integration is available for features that need to wrap a method. The starter itself does not wrap Foundry methods or require the lib-wrapper module.
 
-For an actual wrapping feature, prefer the real [libWrapper](https://github.com/ruipin/fvtt-lib-wrapper) module and document the dependency policy. The included fallback is deliberately limited and does not promise the full libWrapper API or conflict management. Preserve the wrapped function's return value and its `this` binding.
+Features that need the full libWrapper API should declare it as a dependency. The included fallback supports basic wrapping and does not provide the full API or conflict management. Preserve the wrapped function's return value and its `this` binding.
 
 The fallback retains its original MIT attribution. [Third-party notices](THIRD_PARTY_NOTICES.md) describe the adapted sources and licensing.
 
@@ -211,7 +209,7 @@ In hot mode, CSS can update without a page reload. JavaScript and other module r
 
 ### Formatting
 
-The Prettier configuration follows [Pin Cushion's formatting conventions](https://github.com/p4535992/foundryvtt-pin-cushion/blob/master/.prettierrc.json): a 120-character print width, four-space default indentation, and two spaces for JavaScript, JSON, and YAML. The stylesheet, HTML, and Handlebars parser overrides are retained, with `.yaml`, `.mjs`, and `.cjs` added to the corresponding file patterns.
+The Prettier configuration uses a 120-character print width, four-space default indentation, and two spaces for JavaScript, JSON, and YAML. Parser overrides cover stylesheets, HTML, and Handlebars, and the file patterns include `.yaml`, `.mjs`, and `.cjs`.
 
 EditorConfig uses the same indentation rules. Generated output, the npm lockfile, local configuration, and the attributed libWrapper fallback are excluded from formatting. Markdown documentation, including the changelog, is checked. Run `npm run format` before `npm run check` when you change project files.
 
@@ -303,9 +301,9 @@ For manual installation, download `module.zip` and extract it into `Data/modules
 
 See [releasing](wiki/releasing.md) for the workflows, immutable source selection, tag creation, validation gates, release notes, and draft recovery.
 
-## Stay aligned with DFreds
+## Upstream maintenance
 
-The upstream project remains a feature reference, while this repository preserves its JavaScript source, `src/` layout, optional integrations, and release format.
+Upstream checks support maintenance of the template while preserving its JavaScript source, `src/` layout, optional integrations, and release format.
 
 Run `npm run upstream:check` when you want to review upstream changes. The command compares a fixed list of source files with their recorded hashes. It reports differences without applying them. Review the behavior, adapt the relevant change, run the project checks, and update the baseline deliberately.
 
@@ -317,8 +315,6 @@ Run `npm run check` before a release. The behavioral tests cover initialization,
 
 Build-time checks do not replace a Foundry runtime check. Test the module in a clean v14 world, open and close the settings window repeatedly, exercise its settings, check localization and console errors, and verify the installed ZIP rather than only the source tree. Add multiplayer and permission tests when a feature starts modifying shared documents.
 
-## Attribution
+## License
 
-This project adapts code and development conventions from **DFreds Module Template TS**, copyright 2025 Derek Fredrickson, under the MIT License. The optional libWrapper fallback retains the original attribution to Rui Pinheiro. Package metadata uses `license: "SEE LICENSE IN LICENSE"`; the actual license and notices remain in [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
-The requested release asset names and folder layout follow the author's established packaging requirements. They are implemented independently for this JavaScript template.
+This project is distributed under the MIT License. Package metadata uses `license: "SEE LICENSE IN LICENSE"`. Full license terms and third-party notices are included in [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
