@@ -8,6 +8,7 @@ import {
   INSTALL_SECTION_START,
   CHANGELOG_SECTION_START,
   packageExistingDirectory,
+  prepareRelease,
   renderChangelogSection,
   renderInstallationSection,
   updateReleaseBody,
@@ -195,15 +196,38 @@ test("prerelease packaging verifies pinned manifests and rejects a stable-feed s
   );
 });
 
-test("packaging rejects a built manifest version mismatch without stamping the manifest", (t) => {
-  const input = fixture(t);
-  const filename = path.join(input.moduleDirectory, "module.json");
-  const original = JSON.stringify({ ...input.manifest, version: "1.2.4" });
-  fs.writeFileSync(filename, original);
-  assert.throws(() => packageExistingDirectory(input), /version must match.*exactly/u);
-  assert.equal(fs.readFileSync(filename, "utf8"), original);
-  assert.equal(fs.existsSync(path.join(input.artifactDirectory, "module.json")), false);
-  assert.equal(fs.existsSync(path.join(input.artifactDirectory, "module.zip")), false);
+test("release preparation requires an explicit tag", () => {
+  assert.throws(() => prepareRelease({ repository: REPOSITORY }), /release tag is required/iu);
+});
+
+test("packaging stamps the manual version only in release artifacts", async (t) => {
+  for (const version of ["1.3.0", "1.3.0-rc.2"]) {
+    await t.test(version, (t) => {
+      const input = { ...fixture(t), tag: version };
+      const preservedFiles = [
+        path.join(input.moduleDirectory, "module.json"),
+        path.join(input.projectRoot, "src", "module.json"),
+        path.join(input.projectRoot, "package.json"),
+      ];
+      const originals = preservedFiles.map((filename) => fs.readFileSync(filename));
+      fs.writeFileSync(
+        path.join(input.moduleDirectory, "CHANGELOG.md"),
+        `# Changelog\n\n## [${version}] - 2026-11-19\n\n### Changed\n\n- Package the manually selected version.\n`,
+      );
+      const result = packageExistingDirectory(input);
+      assert.equal(result.manifest.version, version);
+      const verified = verifyPackage({ ...result, tag: version, repository: REPOSITORY });
+      assert.equal(verified.manifest.version, version);
+      assert.equal(verified.changelog.version, version);
+      assert.equal(
+        verified.manifest.download,
+        `https://github.com/${REPOSITORY}/releases/download/${version}/module.zip`,
+      );
+      for (const [index, filename] of preservedFiles.entries()) {
+        assert.ok(fs.readFileSync(filename).equals(originals[index]), filename);
+      }
+    });
+  }
 });
 
 test("missing manifest assets fail and remove stale release artifacts", (t) => {

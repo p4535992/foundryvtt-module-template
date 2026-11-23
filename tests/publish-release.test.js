@@ -240,36 +240,47 @@ test("missing tags are created at the selected commit and publication follows bo
   assert.equal(manifest.download, `https://github.com/${REPOSITORY}/releases/download/${VERSION}/module.zip`);
 });
 
-test("publication reads the source version automatically when no version is supplied", async (t) => {
+test("publication requires a supplied version before any API request", async (t) => {
   const input = artifactFixture(t);
   delete input.version;
   const stub = fakeApi();
-  const result = await publishRelease({ ...input, api: stub.api });
-  assert.equal(result.version, VERSION);
-  assert.equal(result.tag, VERSION);
-  assert.equal(stub.state.tag.ref, `refs/tags/${VERSION}`);
+  await assert.rejects(publishRelease({ ...input, api: stub.api }), /release tag is required/iu);
+  assert.deepEqual(stub.calls, []);
 });
 
-test("source, package, artifact, and supplied version disagreements fail before any API request", async (t) => {
-  for (const scenario of ["supplied version", "package version", "artifact version", "prefixed source version"]) {
-    await t.test(scenario, async (t) => {
-      const input = artifactFixture(t);
+test("publication uses the manually selected version independently of source and package versions", async (t) => {
+  for (const [version, channel] of [
+    [VERSION, "stable"],
+    ["14.0.2-rc.1", "prerelease"],
+  ]) {
+    await t.test(channel, async (t) => {
+      const input = { ...artifactFixture(t, version), channel };
       const packageFile = path.join(input.projectRoot, "package.json");
       const sourceFile = path.join(input.projectRoot, "src", "module.json");
-      if (scenario === "supplied version") input.version = "14.0.2";
-      if (scenario === "package version") fs.writeFileSync(packageFile, JSON.stringify({ version: "14.0.2" }));
-      if (["artifact version", "prefixed source version"].includes(scenario)) {
-        const version = scenario === "artifact version" ? "14.0.2" : "v14.0.1";
-        const manifest = JSON.parse(fs.readFileSync(sourceFile, "utf8"));
-        fs.writeFileSync(sourceFile, JSON.stringify({ ...manifest, version }));
-        fs.writeFileSync(packageFile, JSON.stringify({ version }));
-        delete input.version;
-      }
+      const manifest = JSON.parse(fs.readFileSync(sourceFile, "utf8"));
+      const sourceBytes = JSON.stringify({ ...manifest, version: "14.0.0" });
+      const packageBytes = JSON.stringify({ version: "14.0.0" });
+      fs.writeFileSync(sourceFile, sourceBytes);
+      fs.writeFileSync(packageFile, packageBytes);
       const stub = fakeApi();
-      await assert.rejects(publishRelease({ ...input, api: stub.api }));
-      assert.deepEqual(stub.calls, []);
+      const result = await publishRelease({ ...input, api: stub.api });
+      assert.equal(result.version, version);
+      assert.equal(stub.state.tag.ref, `refs/tags/${version}`);
+      assert.equal(stub.state.releases[0].prerelease, channel === "prerelease");
+      assert.equal(fs.readFileSync(sourceFile, "utf8"), sourceBytes);
+      assert.equal(fs.readFileSync(packageFile, "utf8"), packageBytes);
     });
   }
+});
+
+test("a supplied version that disagrees with the verified artifacts fails before any API request", async (t) => {
+  const input = artifactFixture(t);
+  const stub = fakeApi();
+  await assert.rejects(
+    publishRelease({ ...input, version: "14.0.2", api: stub.api }),
+    /Manifest version does not match the release tag/u,
+  );
+  assert.deepEqual(stub.calls, []);
 });
 
 test("prereleases publish with prerelease enabled and never replace the latest stable release", async (t) => {

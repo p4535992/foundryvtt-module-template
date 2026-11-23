@@ -3,7 +3,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { parseArgs } from "node:util";
 import { PROJECT_ROOT, isMain, reportError } from "./config.js";
-import { parseReleaseTag, readProjectReleaseVersion, validateRepository, verifyPackage } from "./verify-package.js";
+import { parseReleaseTag, validateRepository, verifyPackage } from "./verify-package.js";
 import { renderChangelogSection, renderInstallationSection, updateReleaseBody } from "./release.js";
 
 const COMMIT_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/iu;
@@ -206,11 +206,7 @@ export async function publishRelease({
   artifactDirectory = path.join(projectRoot, "artifacts"),
   api,
 }) {
-  const sourceVersion = readProjectReleaseVersion(projectRoot);
-  if (version !== undefined && version !== sourceVersion) {
-    throw new Error("Publication version must match src/module.json.version exactly.");
-  }
-  const request = normalizeReleaseRequest(sourceVersion, channel, commit);
+  const request = normalizeReleaseRequest(version, channel, commit);
   validateRepository(repository);
   const artifacts = loadArtifacts(artifactDirectory, request, repository);
   api ??= createGitHubApi(process.env.GH_TOKEN);

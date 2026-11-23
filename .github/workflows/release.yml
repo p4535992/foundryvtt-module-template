@@ -1,8 +1,13 @@
 name: Create Release
-run-name: Release from ${{ github.ref_name }}
+run-name: Release ${{ inputs.version }} from ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version without a v prefix (e.g. 14.1.1)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -14,3 +19,4 @@ jobs:
     uses: ./.github/workflows/publish.yml
     with:
       channel: stable
+      version: ${{ inputs.version }}

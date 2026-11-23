@@ -7,6 +7,10 @@ on:
         description: stable or prerelease
         required: true
         type: string
+      version:
+        description: Explicit release version without a v prefix
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -39,9 +43,10 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - name: Read and validate the source version, channel, and selected revision
+      - name: Validate the requested version, channel, and selected revision
         id: request
         env:
+          RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_CHANNEL: ${{ inputs.channel }}
           SOURCE_COMMIT: ${{ github.sha }}
         run: |
@@ -49,9 +54,8 @@ jobs:
           import fs from "node:fs";
           import { execFileSync } from "node:child_process";
           import { normalizeReleaseRequest } from "./build/publish-release.js";
-          import { readProjectReleaseVersion } from "./build/verify-package.js";
           const request = normalizeReleaseRequest(
-            readProjectReleaseVersion(),
+            process.env.RELEASE_VERSION,
             process.env.RELEASE_CHANNEL,
             process.env.SOURCE_COMMIT,
           );
