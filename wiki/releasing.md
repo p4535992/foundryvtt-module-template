@@ -1,12 +1,12 @@
 # Releasing a module
 
-The manual release workflows create the version tag and publish two installable assets: **module.json** and **module.zip**. The ZIP contains one top-level directory named after the module id. Stable releases and prereleases have separate workflows and share the same verified packaging process.
+The single manual **Create Release** workflow creates the selected version tag and publishes two installable assets: **module.json** and **module.zip**. Choose `stable` or `prerelease` when running it. Both channels use the same verified build and publication jobs; the ZIP contains one top-level directory named after the module id.
 
 ## Prepare and verify locally
 
 Use the Node.js version recorded in .nvmrc and install the locked dependencies with `npm ci`.
 
-Before preparing a release, set the same unprefixed semantic version in src/module.json, package.json, and the literal MODULE_VERSION in src/scripts/constants.js. The workflows read src/module.json.version automatically and require all three version values to agree exactly. Curate the relevant changes from Unreleased into a dated section matching that version:
+Keep src/module.json, package.json, and literal MODULE_VERSION in src/scripts/constants.js synchronized for regular development builds. For a release, choose an explicit unprefixed semantic version in the workflow or CLI; this value need not match the source metadata. Curate the relevant changes from Unreleased into a dated section matching the chosen release version:
 
 ```markdown
 ## [14.0.0] - YYYY-MM-DD
@@ -18,17 +18,17 @@ Before preparing a release, set the same unprefixed semantic version in src/modu
 
 Replace YYYY-MM-DD with the intended release date. Keep the Unreleased heading for future work. The initial 14.0.0 entry is dated 2026-11-19; subsequent releases need their own curated version section. Preparing a version without its own valid, nonempty section fails clearly.
 
-Use only the relevant categories: Added, Changed, Deprecated, Removed, Fixed, and Security. Omit empty categories. Each included category needs an actual list item; TODO, TBD, and empty placeholders are rejected. A prerelease such as 14.0.1-rc.1 needs its own `[14.0.1-rc.1]` entry and the same prerelease version in all three identity files; it does not borrow the final version's entry.
+Use only the relevant categories: Added, Changed, Deprecated, Removed, Fixed, and Security. Omit empty categories. Each included category needs an actual list item; TODO, TBD, and empty placeholders are rejected. A prerelease such as 14.0.1-rc.1 needs its own `[14.0.1-rc.1]` entry; it does not borrow the final version's entry. The source identity files keep their own synchronized versions.
 
 Then run:
 
 ```sh
 npm run check
-npm run release:prepare -- --repository your-account/example-module
+npm run release:prepare -- --tag 14.0.0 --repository your-account/example-module
 npm run verify:package -- --artifacts artifacts --tag 14.0.0 --repository your-account/example-module
 ```
 
-Replace the example repository and verification tag after creating your own module. The local release:prepare command reads the source version automatically when `--tag` is omitted; an explicit tag must match that version exactly. Use strict, unprefixed semantic versions throughout: the source version `14.0.0` produces tag `14.0.0`, generated `module.json.version` value `14.0.0`, and a download URL containing that exact tag. A leading `v` is rejected rather than normalized. The manual workflows have no version input.
+Replace the example repository and tags after creating your own module. The local release:prepare command requires `--tag`; it never guesses a version from source files. The chosen `14.0.0` tag produces generated `module.json.version` `14.0.0` and a download URL containing the exact tag. A leading `v` is rejected rather than normalized. GitHub Actions also requires a manual `version` input.
 
 The release command creates a fresh temporary directory beneath .release-stage/, builds there, and packages that result. It does not package an existing development dist/ directory. If the manifest declares compendiums, it compiles them from packs-src/ into that same isolated output; a declared pack without source data fails the release.
 
@@ -44,7 +44,7 @@ artifacts/
 
 Only module.json and module.zip become release assets. install-section.md and changelog-section.md supply the two managed sections of the release description. The complete CHANGELOG.md is also included inside the module ZIP.
 
-The packaging step preserves the source manifest and its version while generating release URLs in memory. The separately attached manifest is byte-identical to the one in the ZIP. Existing generated artifacts with these names are removed before a new preparation, so a failed build does not leave an older module.zip ready for accidental upload.
+The packaging step preserves the source manifest and stamps the requested version and release URLs only into generated artifacts. The separately attached manifest is byte-identical to the one in the ZIP. Existing generated artifacts with these names are removed before a new preparation, so a failed build does not leave an older module.zip ready for accidental upload.
 
 ## Manifest URLs
 
@@ -63,25 +63,25 @@ A prerelease such as 14.0.1-rc.1 uses its own attached manifest URL as the `mani
 
 ## Create a stable release
 
-1. Set src/module.json.version, package.json.version, and MODULE_VERSION in src/scripts/constants.js to the same stable version, such as `14.0.0`. Commit those files, the intended module changes, and the exact dated CHANGELOG.md entry to the branch you want to release.
-2. Open **Actions → Create Release → Run workflow** and select that branch.
-3. Run the workflow. It reads the version from src/module.json; there is no version field to fill in.
+1. Commit the intended module changes and a nonempty, dated CHANGELOG.md section for the chosen stable version, such as `[14.1.1]`.
+2. Open **Actions → Create Release → Run workflow**, select the source branch, choose `stable`, and enter `14.1.1` in the required `version` field (without a `v`).
+3. Run the workflow. It validates the requested version and selected commit, runs the project checks, builds in isolated staging, verifies the archive, creates the exact tag, uploads both release assets, and publishes the completed release last.
 
-The workflow rejects versions containing a prerelease suffix, a leading `v`, or a mismatch between the three identity files. It records the selected branch's commit at dispatch, checks out that exact SHA, installs locked dependencies, runs the project checks, builds in isolated staging, and verifies the archive. An existing tag or release is not required. After validation succeeds, publication creates `14.0.0` at that verified commit, prepares a draft release, uploads module.json and module.zip, and publishes the completed release last.
+The stable channel rejects prerelease suffixes and rejects publishing a version older than or equal to the latest stable release.
 
 ## Create a prerelease
 
-Use **Actions → Create Prerelease → Run workflow** for testing versions. First set src/module.json.version, package.json.version, and the literal MODULE_VERSION in src/scripts/constants.js to the same unprefixed version with a prerelease suffix, such as `14.0.1-rc.1`, and commit an exact dated `[14.0.1-rc.1]` changelog entry. Choose that branch and run the workflow without entering a version. A stable version, a leading `v`, or mismatched source versions are rejected.
+Open the same **Actions → Create Release → Run workflow** screen, choose `prerelease`, and enter a full version with a suffix such as `14.1.1-rc.1` or `14.1.1-beta.2`. Commit a matching dated CHANGELOG.md entry first. The workflow rejects versions without a prerelease suffix or with a leading `v`.
 
-The prerelease workflow follows the same checks and publication order, creates the exact tag `14.0.1-rc.1`, and marks the GitHub release as a prerelease. It does not promote the release to latest stable. Share that prerelease's attached module.json URL with testers.
+The prerelease is tagged and published with GitHub's prerelease flag, and its manifest remains pinned to its own tag. It does not replace the latest stable release. Share the attached module.json URL with testers.
 
 ## Publication guarantees and reruns
 
-Both manual workflows call .github/workflows/publish.yml. The build job has read-only repository permissions. It passes the four verified files to a separate publication job through an artifact identified by its exact artifact ID; the download fails on an artifact digest mismatch. Only the publication job has contents write permission, and GH_TOKEN is exposed only to the publication helper. That job does not install dependencies or run npm scripts. No personal access token, Discord secret, or Foundry publication secret is required.
+The single manual .github/workflows/release.yml contains both build and publish jobs. The build job has read-only repository permissions. It passes the four verified files to a separate publication job through an artifact identified by its exact artifact ID; the download fails on an artifact digest mismatch. Only the publication job has contents write permission, and GH_TOKEN is exposed only to the publication helper. That job does not install dependencies or run npm scripts. No personal access token, Discord secret, or Foundry publication secret is required.
 
-The helper checks the source version, channel, commit, and package again before publication. Publication jobs are serialized across the repository, while independent builds can run in parallel. An existing tag is accepted only if it already points to that exact commit; tags are never moved. An existing published release is refused, so rerunning a successful release cannot replace its assets. Publish a new version when code changes. Stable publication also refuses to replace a newer latest stable release with an older version.
+The helper checks the explicitly requested version, channel, commit, and verified package again before publication. Publication jobs are serialized across the repository, while independent builds can run in parallel. An existing tag is accepted only if it already points to that exact commit; tags are never moved. An existing published release is refused, so rerunning a successful release cannot replace its assets. Publish a new version when code changes. Stable publication also refuses to replace a newer latest stable release with an older version.
 
-An interrupted draft may be resumed only for the same tag, source commit, and release channel. Rerun the original workflow to keep its selected commit. If its temporary build artifact has expired, rerun all jobs to rebuild it. A failure before publication leaves any created release as a draft; it is not exposed as a completed release without its assets. A branch advancing after dispatch does not change the commit being released.
+An interrupted draft may be resumed only for the same tag, source commit, and release channel. Rerun the original workflow execution to keep its selected commit. If its temporary build artifact has expired, rerun all jobs to rebuild it. A failure before publication leaves any created release as a draft; it is not exposed as a completed release without its assets. A branch advancing after dispatch does not change the commit being released.
 
 Release publication is manual. Publishing the draft does not start another release workflow. The separate **Check** workflow runs on branch pushes and manual requests. No workflow is triggered by a pull request, a schedule, or an upstream update bot.
 

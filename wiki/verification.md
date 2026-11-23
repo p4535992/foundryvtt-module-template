@@ -14,9 +14,9 @@ The validation gates for this release include:
 - A production Vite build and distribution validation, including structural language namespaces, injected Sass identity, and reusable settings resources.
 - An isolated release build, exact-tag manifest validation, ZIP layout and checksum checks, and byte-for-byte comparison of both manifest copies.
 
-Publication reads src/module.json.version automatically and requires exact consistency with package.json.version, the literal MODULE_VERSION in src/scripts/constants.js, and the dated changelog entry. Versions and tags use strict, unprefixed SemVer. The stable workflow rejects a prerelease suffix; the prerelease workflow requires one. Neither manual workflow has a version input.
+Publication uses the explicit version entered in the Create Release workflow and requires its exact dated changelog entry. Source manifest, package, and literal MODULE_VERSION remain synchronized for development builds; release packaging stamps the selected version only into generated artifacts. Tags use strict, unprefixed SemVer. The stable channel rejects prerelease suffixes; the prerelease channel requires one.
 
-Run npm run check before preparing a release. The GitHub Check workflow uses the same command. The Create Release and Create Prerelease workflows repeat these checks, create the associated tag, and publish only after module.json and module.zip have been uploaded and verified.
+Run npm run check before preparing a release. The GitHub Check workflow uses the same command. The Create Release workflow repeats these checks for both channels, creates the associated tag, and publishes only after module.json and module.zip have been uploaded and verified.
 
 The `SocketlibProxy` tests exercise cached access and shared readiness, registration ownership, handler names and function-reference lookup, strict caller authorization, frozen sender context, variadic JSON arguments, and preservation of `undefined` results. They also cover current-GM selection, recipient filtering without input mutation, broadcasts that do not await handlers, background error reporting, and lifecycle cleanup.
 

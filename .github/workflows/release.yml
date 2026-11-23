@@ -1,11 +1,19 @@
 name: Create Release
-run-name: Release ${{ inputs.version }} from ${{ github.ref_name }}
+run-name: Release ${{ inputs.version }} (${{ inputs.channel }}) from ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
     inputs:
+      channel:
+        description: "Stable updates the latest feed; prerelease keeps its own tag"
+        required: true
+        type: choice
+        default: stable
+        options:
+          - stable
+          - prerelease
       version:
-        description: "Release version without a v prefix (e.g. 14.1.1)"
+        description: "Full version without v (e.g. 14.1.1 or 14.1.1-rc.1); must have a CHANGELOG entry"
         required: true
         type: string
 
@@ -13,10 +21,130 @@ permissions:
   contents: read
 
 jobs:
+  build:
+    name: Validate and package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.request.outputs.version }}
+      tag: ${{ steps.request.outputs.tag }}
+      channel: ${{ steps.request.outputs.channel }}
+      commit: ${{ steps.request.outputs.commit }}
+      artifact_id: ${{ steps.package.outputs.artifact-id }}
+
+    steps:
+      - name: Check out the selected immutable revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Validate the requested version, channel, and selected revision
+        id: request
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import { execFileSync } from "node:child_process";
+          import { normalizeReleaseRequest } from "./build/publish-release.js";
+          const request = normalizeReleaseRequest(
+            process.env.RELEASE_VERSION,
+            process.env.RELEASE_CHANNEL,
+            process.env.SOURCE_COMMIT,
+          );
+          const head = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+          if (head !== request.commit) throw new Error("The checkout does not match the selected workflow revision.");
+          const outputs = {
+            version: request.version,
+            tag: request.tag,
+            channel: request.channel,
+            commit: request.commit,
+          };
+          fs.appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            Object.entries(outputs).map(([key, value]) => key + "=" + value).join("\n") + "\n",
+          );
+          NODE
+
+      - name: Install the locked dependencies
+        run: npm ci
+
+      - name: Check source, tests, build, and distribution
+        run: npm run check
+
+      - name: Prepare the isolated release package
+        env:
+          RELEASE_TAG: ${{ steps.request.outputs.tag }}
+        run: npm run release:prepare -- --tag "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"
+
+      - name: Verify release artifacts
+        env:
+          RELEASE_TAG: ${{ steps.request.outputs.tag }}
+        run: npm run verify:package -- --artifacts artifacts --tag "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"
+
+      - name: Preserve the verified release files
+        id: package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: module-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/module.json
+            artifacts/module.zip
+            artifacts/install-section.md
+            artifacts/changelog-section.md
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
   publish:
+    name: Publish ${{ needs.build.outputs.tag }}
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     permissions:
       contents: write
-    uses: ./.github/workflows/publish.yml
-    with:
-      channel: stable
-      version: ${{ inputs.version }}
+    concurrency:
+      group: module-publication-${{ github.repository }}
+      cancel-in-progress: false
+    env:
+      RELEASE_VERSION: ${{ needs.build.outputs.version }}
+      RELEASE_CHANNEL: ${{ needs.build.outputs.channel }}
+      SOURCE_COMMIT: ${{ needs.build.outputs.commit }}
+
+    steps:
+      - name: Check out the verified source revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.build.outputs.commit }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up Node.js for publication
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Download the verified release files
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact_id }}
+          path: artifacts
+          merge-multiple: true
+          digest-mismatch: error
+
+      - name: Create the associated tag and publish the completed release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node build/publish-release.js --version "$RELEASE_VERSION" --channel "$RELEASE_CHANNEL" --commit "$SOURCE_COMMIT"

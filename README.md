@@ -22,7 +22,7 @@ This JavaScript template adapts features from [DFreds Module Template TS](https:
 - Optional libWrapper integration with no registered wrappers in a fresh module.
 - Targeted renaming, safe Foundry linking, a launcher, and optional compendium tools.
 - Release assets named `module.json` and `module.zip`, with the module-id directory inside the archive.
-- Separate stable and prerelease workflows, source-driven unprefixed tags, and curated release descriptions.
+- Automated push checks and one manual stable/prerelease workflow with explicit versions and curated release descriptions.
 - Versioned guides in `wiki/`, consistent formatting, and manual upstream source comparison.
 
 The template targets Foundry v14. Set `compatibility.verified` only after testing the derived module in an actual Foundry build. Automated source checks do not establish runtime compatibility.
@@ -202,7 +202,7 @@ The fallback retains its original MIT attribution. [Third-party notices](THIRD_P
 | `npm test`                                                            | Run behavioral tests with Node's built-in test runner.                  |
 | `npm run verify:package`                                              | Validate a built module and its manifest paths.                         |
 | `npm run check`                                                       | Run lint, formatting, tests, build, and package verification.           |
-| `npm run release:prepare -- --repository your-account/example-module` | Prepare release assets using the source version.                        |
+| `npm run release:prepare -- --tag 14.1.1 --repository OWNER/REPO`     | Prepare release assets for the given version.                           |
 | `npm run upstream:check`                                              | Manually compare approved upstream files against the recorded baseline. |
 
 In hot mode, CSS can update without a page reload. JavaScript and other module resources use a full reload so lifecycle hooks and wrappers are not registered twice. Ordinary watch mode updates the output on disk; reload Foundry to load the rebuilt JavaScript.
@@ -217,9 +217,9 @@ EditorConfig uses the same indentation rules. Generated output, the npm lockfile
 
 Maintain [CHANGELOG.md](CHANGELOG.md) for module users. Record meaningful changes under `Unreleased`, grouped into `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, or `Security` as needed. Explain the user-visible result and include migration instructions when a change requires action.
 
-Before releasing, set the same unprefixed semantic version in `src/module.json`, `package.json`, and `MODULE_VERSION` in `src/scripts/constants.js`, then move the applicable entries into a dated heading such as `## [1.2.3] - 2026-11-19`, leaving `Unreleased` available for future work. Keep the newest version first. The release tag and changelog version must match those source versions exactly. A prerelease such as `1.2.3-beta.1` needs its own entry and must appear in all three version fields.
+Keep `src/module.json`, `package.json`, and `MODULE_VERSION` in `src/scripts/constants.js` synchronized for regular development. Before publishing, move the applicable changes into a dated heading for the release version you intend to enter, such as `## [1.2.3] - 2026-11-19`, leaving `Unreleased` available for future work. Keep the newest version first. The release tag must match that changelog entry, but it does not have to match the source metadata versions. A prerelease such as `1.2.3-beta.1` needs its own dated entry.
 
-Release preparation reads the entry for the exact source version and refuses to publish changelog content from `Unreleased` or another version. The workflow includes that entry and the generated installation instructions in the release description while preserving maintainer text outside its managed sections. The packaged module also includes the changelog.
+Release preparation reads the entry for the exact manually requested version and refuses to publish changelog content from `Unreleased` or another version. The workflow includes that entry and the generated installation instructions in the release description while preserving maintainer text outside its managed sections. The packaged module also includes the changelog.
 
 ## Distribution and release assets
 
@@ -281,11 +281,11 @@ For a release tagged `1.2.3`, the generated manifest uses:
 
 `download` identifies the archive for that exact release. Stable releases use the latest stable manifest as their update feed. Prereleases point to the manifest attached to their own tag; choosing another prerelease or the stable channel is an explicit installation decision.
 
-The publication workflows read the version automatically from `src/module.json` and require exact consistency with `package.json.version` and the literal `MODULE_VERSION`. Tags use that same unprefixed semantic version, such as `14.1.0` or `14.1.1-rc.1`. A leading `v` is rejected rather than removed.
+The manual publication workflow requires a complete version input such as `14.1.1` or `14.1.1-rc.1`. The selected version becomes the Git tag and the version of the generated release manifests without rewriting source metadata. A leading `v` is rejected rather than removed.
 
 ### Create a release or prerelease
 
-Prepare all three version fields and the matching dated changelog entry in the revision you intend to publish. In GitHub Actions, choose **Create Release** when the source version is stable, such as `14.1.0`, or **Create Prerelease** when it has a suffix, such as `14.1.1-rc.1`. Select the source branch or tag and run the workflow. There is no version input; the selected workflow validates that the source version belongs to its channel.
+Commit the intended changes and a dated changelog entry for the exact version you want to publish. In GitHub Actions, open **Create Release → Run workflow**, choose the source branch, select `stable` or `prerelease`, and enter the complete version without a `v` prefix. Stable versions omit the suffix; prereleases use one such as `-rc.1` or `-beta.1`. Both channels share the same validated build and publication jobs.
 
 The workflow checks and packages the exact selected commit before creating its tag. It then creates a draft release, uploads and verifies both assets, and publishes the completed release. No tag or release needs to exist before the first run. Existing tags must already point to the same commit; published releases cannot be replaced. A failed upload leaves a draft that can be resumed from the same source revision.
 

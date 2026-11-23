@@ -51,7 +51,7 @@ Changing a baseline hash records a review decision. Do not update it automatical
 | Discord and Foundry website publication | Omitted                                                                                                                               |
 | Development hot updates                 | Local rebuild and reload behavior documented for this implementation; no claim of identical behavior to every upstream HMR feature    |
 
-Upstream publish.yml remains in the comparison allowlist to track its Discord and Foundry website publication role. The local publish.yml is a separate reusable workflow for GitHub release assets; it does not publish to those external destinations.
+Upstream publish.yml remains in the comparison allowlist to track its Discord and Foundry website publication role. Locally, the single release.yml publishes verified GitHub release assets for both stable and prerelease channels; it does not publish to those external destinations.
 
 The upstream compatibility shim is adapted into src/scripts/lib/libwrapper-shim.js. Its Rui Pinheiro MIT notice is retained in THIRD_PARTY_NOTICES.md. The root LICENSE preserves the DFreds MIT notice.
 

@@ -19,8 +19,8 @@
 
 ## Build and release
 
-- Read the release version automatically from `src/module.json`; manual workflows must not ask for a version. Require exact equality with `package.json.version`, literal `MODULE_VERSION`, and a dated changelog entry for that version.
-- Use strict, unprefixed semantic versions for source metadata and release tags, such as `14.0.0` or `14.0.1-rc.1`. Reject a leading `v`; the stable and prerelease workflows must enforce their respective suffix rules.
+- Keep `src/module.json`, `package.json`, and the literal `MODULE_VERSION` synchronized for source builds. The manual release workflow requires an explicit semantic version and a dated changelog entry for that version. Stamp the requested version only into generated release artifacts.
+- Use strict, unprefixed semantic versions for source metadata and release tags, such as `14.0.0` or `14.0.1-rc.1`. Reject a leading `v`; the stable and prerelease channels of the single release workflow must enforce their respective suffix rules.
 - Produce the installable module under `dist/<module-id>/`.
 - Release preparation must use a separate clean staging directory and protect live development compendium data.
 - Publish assets named `module.json` and `module.zip`.
@@ -30,7 +30,7 @@
 - Publication must validate the selected commit, create its associated tag without moving an existing tag, verify both uploaded assets, and publish the draft last. Published releases are immutable.
 - The manifest inside the archive and the separately attached manifest must be byte-identical.
 - Generate the English installation section from `.github/RELEASE_TEMPLATE.md`.
-- Maintain human-written, English changelog entries in `CHANGELOG.md`. Keep unreleased work under `Unreleased`; release preparation must use the dated entry matching the source version.
+- Maintain human-written, English changelog entries in `CHANGELOG.md`. Keep unreleased work under `Unreleased`; release preparation must use the dated entry matching the explicitly requested release version.
 - Preserve upstream license and attribution notices in the repository and distribution. Package metadata uses `main: "module.js"` and `license: "SEE LICENSE IN LICENSE"`; the actual license files remain authoritative.
 
 ## Maintenance

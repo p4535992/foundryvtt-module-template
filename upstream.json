@@ -38,14 +38,8 @@
     {
       "path": ".github/workflows/release.yml",
       "gitBlobSha": "36ae8d34efc04cb133d82a11ecc63a4878438bc6",
-      "localPaths": [
-        ".github/workflows/release.yml",
-        ".github/workflows/prerelease.yml",
-        ".github/workflows/publish.yml",
-        "build/release.js",
-        "build/publish-release.js"
-      ],
-      "decision": "Use explicit stable/prerelease publication, validate the selected commit, create its associated tag, and publish verified assets with curated release notes."
+      "localPaths": [".github/workflows/release.yml", "build/release.js", "build/publish-release.js"],
+      "decision": "Use one manual workflow with explicit stable/prerelease selection and version input; validate the selected commit, create its tag, and publish verified assets with curated release notes."
     },
     {
       "path": ".github/workflows/publish.yml",
@@ -207,7 +201,7 @@
     "The generic settings application controls real client debug logging; no sample feature toggle or custom global Handlebars helper is registered.",
     "ModuleApi exposes readiness and a native ModuleSocket service; the guarded module.socket alias must preserve the core boolean manifest flag and be verified in a real Foundry build.",
     "Opt-in SocketlibProxy instance methods share the native service while preserving its payload/options API; the adapter adds no socketlib dependency, global factories, readiness event, protocol, or error-class emulation.",
-    "Release workflows have no version input: the source manifest, package, literal constant, and dated changelog must agree on strict unprefixed SemVer."
+    "A single manual release workflow accepts explicit unprefixed SemVer and stable/prerelease channel inputs; it requires a matching dated changelog and stamps the chosen version only into release artifacts."
   ],
   "localAdditions": [
     {
